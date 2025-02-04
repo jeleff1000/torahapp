@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import random
 import os
+from datetime import datetime
 
 # Get the directory of the current script
 base_dir = os.path.dirname(__file__)
@@ -9,16 +10,25 @@ base_dir = os.path.dirname(__file__)
 # Load the data from the parquet files
 talmud_data_path = os.path.join(base_dir, 'talmud_topics.parquet')
 torah_data_path = os.path.join(base_dir, 'torah_topics.parquet')
-
+calendar_data_path = os.path.join(base_dir, 'learning_calendar_feb_2025.parquet')
 talmud_df = pd.read_parquet(talmud_data_path)
 torah_df = pd.read_parquet(torah_data_path)
+calendar_df = pd.read_parquet(calendar_data_path)
 
 # Split the topics into lists
 talmud_df['Topics'] = talmud_df['Topics'].apply(lambda x: x.split(', '))
 torah_df['Topics'] = torah_df['Topics'].apply(lambda x: x.split(', '))
 
-# Create dictionaries for easy access
-talmud_dict = talmud_df.set_index('Daf')['Topics'].to_dict()
+# Combine topics for 'a' and 'b' suffixes under the same key
+combined_talmud_dict = {}
+for daf, topics in talmud_df.set_index('Daf')['Topics'].to_dict().items():
+    base_daf = daf[:-1] if daf[-1] in ['a', 'b'] else daf
+    if base_daf not in combined_talmud_dict:
+        combined_talmud_dict[base_daf] = set()
+    combined_talmud_dict[base_daf].update(topics)
+
+# Convert sets to lists
+talmud_dict = {k: list(v) for k, v in combined_talmud_dict.items()}
 torah_dict = torah_df.set_index('Parsha')['Topics'].to_dict()
 
 # Function to get surrounding dafs
@@ -38,13 +48,13 @@ def get_surrounding_parshas(parsha, n=3):
     return keys[start:index] + keys[index + 1:end]
 
 # Streamlit app
-st.title("Topics Quiz")
+st.title("Daily Torah Quiz")
 
 # Create tabs
-tab1, tab2 = st.tabs(["Talmud Topics", "Torah Topics"])
+tab1, tab2 = st.tabs(["Daf Yomi Topics", "Parsha Topics"])
 
 with tab1:
-    st.header("Talmud Topics Quiz")
+    st.header("Daf Yomi Quiz")
 
     # Initialize session state
     if 'selected_daf' not in st.session_state:
@@ -59,9 +69,20 @@ with tab1:
         st.session_state.answered = False
     if 'selected_option' not in st.session_state:
         st.session_state.selected_option = None
+    if 'selected_date' not in st.session_state:
+        st.session_state.selected_date = datetime.today().strftime('%Y-%m-%d')
+
+    # Dropdown for selecting a date
+    date_list = calendar_df['Date'].unique()
+    selected_date_index = date_list.tolist().index(st.session_state.selected_date) if st.session_state.selected_date in date_list else 0
+    selected_date = st.selectbox("Select a Date", date_list, index=selected_date_index, key="date_talmud")
+
+    # Filter calendar data for the selected date
+    filtered_calendar_df = calendar_df[calendar_df['Date'] == selected_date]
 
     # Dropdown for selecting a Daf
-    selected_daf = st.selectbox("Select a Daf", list(talmud_dict.keys()), index=0)
+    daf_list = filtered_calendar_df[filtered_calendar_df['Category'] == 'Talmud']['Display Value (en)'].tolist()
+    selected_daf = st.selectbox("Select a Daf", daf_list, index=0, key="daf_talmud")
 
     def generate_talmud_question(daf):
         correct_topics = talmud_dict[daf]
@@ -98,7 +119,7 @@ with tab1:
         st.rerun()
 
 with tab2:
-    st.header("Torah Topics Quiz")
+    st.header("Parsha Quiz")
 
     # Initialize session state
     if 'selected_parsha' not in st.session_state:
@@ -113,9 +134,20 @@ with tab2:
         st.session_state.answered_torah = False
     if 'selected_option_torah' not in st.session_state:
         st.session_state.selected_option_torah = None
+    if 'selected_date' not in st.session_state:
+        st.session_state.selected_date = datetime.today().strftime('%Y-%m-%d')
+
+    # Dropdown for selecting a date
+    date_list = calendar_df['Date'].unique()
+    selected_date_index = date_list.tolist().index(st.session_state.selected_date) if st.session_state.selected_date in date_list else 0
+    selected_date = st.selectbox("Select a Date", date_list, index=selected_date_index, key="date_torah")
+
+    # Filter calendar data for the selected date
+    filtered_calendar_df = calendar_df[calendar_df['Date'] == selected_date]
 
     # Dropdown for selecting a Parsha
-    selected_parsha = st.selectbox("Select a Parsha", list(torah_dict.keys()), index=0)
+    parsha_list = filtered_calendar_df[filtered_calendar_df['Category'] == 'Tanakh']['Display Value (en)'].tolist()
+    selected_parsha = st.selectbox("Select a Parsha", parsha_list, index=0, key="parsha_torah")
 
     def generate_torah_question(parsha):
         correct_topics = torah_dict[parsha]
