@@ -51,7 +51,7 @@ def get_surrounding_parshas(parsha, n=3):
 st.title("Daily Torah Quiz")
 
 # Create tabs
-tab1, tab2 = st.tabs(["Daf Yomi Topics", "Parsha Topics"])
+tab1, tab2 = st.tabs(["Daf Yomi", "Parsha"])
 
 with tab1:
     st.header("Daf Yomi Quiz")
