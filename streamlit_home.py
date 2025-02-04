@@ -96,16 +96,8 @@ with tab1:
         # Filter calendar data for all dates and title "Daf Yomi"
         filtered_calendar_df = calendar_df[calendar_df['Title (en)'] == 'Daf Yomi'].drop_duplicates(subset=['Display Value (en)'])
 
-    # Dropdown for selecting a Seder
-    seder_list = talmud_df['Seder'].unique().tolist()
-    selected_seder = st.selectbox("Select a Seder", seder_list, index=0, key="seder_talmud")
-
-    # Filter tractates based on the selected Seder
-    tractate_list = talmud_df[talmud_df['Seder'] == selected_seder]['Tractate'].unique().tolist()
-    selected_tractate = st.selectbox("Select a Tractate", tractate_list, index=0, key="tractate_talmud")
-
-    # Filter dafs based on the selected Tractate
-    daf_list = talmud_df[talmud_df['Tractate'] == selected_tractate]['Daf'].tolist()
+    # Dropdown for selecting a Daf
+    daf_list = filtered_calendar_df['Display Value (en)'].tolist()
     selected_daf = st.selectbox("Select a Daf", daf_list, index=0, key="daf_talmud")
 
     def generate_talmud_question(daf):
