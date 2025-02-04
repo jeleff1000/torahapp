@@ -50,6 +50,12 @@ def get_surrounding_parshas(parsha, n=3):
 # Streamlit app
 st.title("Daily Torah Quiz")
 
+# Initialize session state for progress tracking
+if 'correct_answers' not in st.session_state:
+    st.session_state.correct_answers = 0
+if 'total_questions' not in st.session_state:
+    st.session_state.total_questions = 0
+
 # Create tabs
 tab1, tab2 = st.tabs(["Daf Yomi", "Parsha"])
 
@@ -88,7 +94,7 @@ with tab1:
         filtered_calendar_df = calendar_df[(calendar_df['Date'] == st.session_state.selected_date) & (calendar_df['Title (en)'] == 'Daf Yomi')]
     else:
         # Filter calendar data for all dates and title "Daf Yomi"
-        filtered_calendar_df = calendar_df[calendar_df['Title (en)'] == 'Daf Yomi']
+        filtered_calendar_df = calendar_df[calendar_df['Title (en)'] == 'Daf Yomi'].drop_duplicates(subset=['Display Value (en)'])
 
     # Dropdown for selecting a Daf
     daf_list = filtered_calendar_df['Display Value (en)'].tolist()
@@ -116,7 +122,9 @@ with tab1:
     # Check the answer
     if st.button("Submit"):
         st.session_state.answered = True
+        st.session_state.total_questions += 1
         if st.session_state.selected_option == st.session_state.correct_topic:
+            st.session_state.correct_answers += 1
             st.success("Correct!")
         else:
             st.error(f"Incorrect! The correct answer is: {st.session_state.correct_topic}")
@@ -163,7 +171,7 @@ with tab2:
         filtered_calendar_df = calendar_df[(calendar_df['Date'] == st.session_state.selected_date) & (calendar_df['Title (en)'] == 'Parashat Hashavua')]
     else:
         # Filter calendar data for all dates and title "Parashat Hashavua"
-        filtered_calendar_df = calendar_df[calendar_df['Title (en)'] == 'Parashat Hashavua']
+        filtered_calendar_df = calendar_df[calendar_df['Title (en)'] == 'Parashat Hashavua'].drop_duplicates(subset=['Display Value (en)'])
 
     # Dropdown for selecting a Parsha
     parsha_list = filtered_calendar_df['Display Value (en)'].tolist()
@@ -191,7 +199,9 @@ with tab2:
     # Check the answer
     if st.button("Submit", key="submit_torah"):
         st.session_state.answered_torah = True
+        st.session_state.total_questions += 1
         if st.session_state.selected_option_torah == st.session_state.correct_topic_torah:
+            st.session_state.correct_answers += 1
             st.success("Correct!")
         else:
             st.error(f"Incorrect! The correct answer is: {st.session_state.correct_topic_torah}")
@@ -202,3 +212,8 @@ with tab2:
         st.session_state.answered_torah = False
         st.session_state.selected_option_torah = None
         st.rerun()
+
+# Display progress bar at the bottom
+progress = st.session_state.correct_answers / st.session_state.total_questions if st.session_state.total_questions > 0 else 0
+st.progress(progress)
+st.write(f"Score: {st.session_state.correct_answers}/{st.session_state.total_questions} ({progress * 100:.2f}%)")
