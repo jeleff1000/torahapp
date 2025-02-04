@@ -10,7 +10,7 @@ base_dir = os.path.dirname(__file__)
 # Load the data from the parquet files
 talmud_data_path = os.path.join(base_dir, 'talmud_topics.parquet')
 torah_data_path = os.path.join(base_dir, 'torah_topics.parquet')
-calendar_data_path = os.path.join(base_dir, 'learning_calendar_feb_2025.parquet')
+calendar_data_path = os.path.join(base_dir, 'learning_calendar_2024_2025.parquet')
 talmud_df = pd.read_parquet(talmud_data_path)
 torah_df = pd.read_parquet(torah_data_path)
 calendar_df = pd.read_parquet(calendar_data_path)
@@ -72,16 +72,26 @@ with tab1:
     if 'selected_date' not in st.session_state:
         st.session_state.selected_date = datetime.today().strftime('%Y-%m-%d')
 
-    # Dropdown for selecting a date
-    date_list = calendar_df['Date'].unique()
-    selected_date_index = date_list.tolist().index(st.session_state.selected_date) if st.session_state.selected_date in date_list else 0
-    selected_date = st.selectbox("Select a Date", date_list, index=selected_date_index, key="date_talmud")
+    # Columns for date input and radio button
+    col1, col2 = st.columns([2, 1])
+    with col1:
+        selected_date = st.date_input("Select a Date", datetime.strptime(st.session_state.selected_date, '%Y-%m-%d'), key="date_talmud")
+        st.session_state.selected_date = selected_date.strftime('%Y-%m-%d')
+    with col2:
+        date_option = st.radio("Date Option", ["Specific Date", "All Dates"], key="date_option")
 
-    # Filter calendar data for the selected date
-    filtered_calendar_df = calendar_df[calendar_df['Date'] == selected_date]
+    # Format the selected date
+    formatted_date = datetime.strptime(st.session_state.selected_date, '%Y-%m-%d').strftime('%d %b %Y')
+
+    if date_option == "Specific Date":
+        # Filter calendar data for the selected date and title "Daf Yomi"
+        filtered_calendar_df = calendar_df[(calendar_df['Date'] == st.session_state.selected_date) & (calendar_df['Title (en)'] == 'Daf Yomi')]
+    else:
+        # Filter calendar data for all dates and title "Daf Yomi"
+        filtered_calendar_df = calendar_df[calendar_df['Title (en)'] == 'Daf Yomi']
 
     # Dropdown for selecting a Daf
-    daf_list = filtered_calendar_df[filtered_calendar_df['Category'] == 'Talmud']['Display Value (en)'].tolist()
+    daf_list = filtered_calendar_df['Display Value (en)'].tolist()
     selected_daf = st.selectbox("Select a Daf", daf_list, index=0, key="daf_talmud")
 
     def generate_talmud_question(daf):
@@ -137,16 +147,26 @@ with tab2:
     if 'selected_date' not in st.session_state:
         st.session_state.selected_date = datetime.today().strftime('%Y-%m-%d')
 
-    # Dropdown for selecting a date
-    date_list = calendar_df['Date'].unique()
-    selected_date_index = date_list.tolist().index(st.session_state.selected_date) if st.session_state.selected_date in date_list else 0
-    selected_date = st.selectbox("Select a Date", date_list, index=selected_date_index, key="date_torah")
+    # Columns for date input and radio button
+    col1, col2 = st.columns([2, 1])
+    with col1:
+        selected_date = st.date_input("Select a Date", datetime.strptime(st.session_state.selected_date, '%Y-%m-%d'), key="date_torah")
+        st.session_state.selected_date = selected_date.strftime('%Y-%m-%d')
+    with col2:
+        date_option_torah = st.radio("Date Option", ["Specific Date", "All Dates"], key="date_option_torah")
 
-    # Filter calendar data for the selected date
-    filtered_calendar_df = calendar_df[calendar_df['Date'] == selected_date]
+    # Format the selected date
+    formatted_date = datetime.strptime(st.session_state.selected_date, '%Y-%m-%d').strftime('%d %b %Y')
+
+    if date_option_torah == "Specific Date":
+        # Filter calendar data for the selected date and title "Parashat Hashavua"
+        filtered_calendar_df = calendar_df[(calendar_df['Date'] == st.session_state.selected_date) & (calendar_df['Title (en)'] == 'Parashat Hashavua')]
+    else:
+        # Filter calendar data for all dates and title "Parashat Hashavua"
+        filtered_calendar_df = calendar_df[calendar_df['Title (en)'] == 'Parashat Hashavua']
 
     # Dropdown for selecting a Parsha
-    parsha_list = filtered_calendar_df[filtered_calendar_df['Category'] == 'Tanakh']['Display Value (en)'].tolist()
+    parsha_list = filtered_calendar_df['Display Value (en)'].tolist()
     selected_parsha = st.selectbox("Select a Parsha", parsha_list, index=0, key="parsha_torah")
 
     def generate_torah_question(parsha):
