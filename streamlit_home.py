@@ -13,11 +13,13 @@ talmud_data_path = os.path.join(base_dir, 'talmud_topics.parquet')
 torah_data_path = os.path.join(base_dir, 'torah_topics.parquet')
 calendar_data_path = os.path.join(base_dir, 'learning_calendar_2024_2025.parquet')
 sefer_hachinuch_path = os.path.join(base_dir, 'sefer_hachinuch.parquet')
+kitzur_related_path = os.path.join(base_dir, 'kitzur_related_by_parsha.parquet')
 
 talmud_df = pd.read_parquet(talmud_data_path)
 torah_df = pd.read_parquet(torah_data_path)
 calendar_df = pd.read_parquet(calendar_data_path)
 sefer_hachinuch_df = pd.read_parquet(sefer_hachinuch_path)
+kitzur_related_df = pd.read_parquet(kitzur_related_path)
 
 # Split the topics into lists
 talmud_df['Topics'] = talmud_df['Topics'].apply(lambda x: x.split(', '))
@@ -116,7 +118,7 @@ with tab1:
     daf_yomi_tab(st, calendar_df, talmud_dict, seder_tractates, daf_ranges, date_option)
 
 with tab2:
-    parsha_tab(st, calendar_df, torah_dict, torah_df, date_option, sefer_hachinuch_df)
+    parsha_tab(st, calendar_df, torah_dict, torah_df, date_option, sefer_hachinuch_df, kitzur_related_df)
 
 # Display progress bar at the bottom
 progress = st.session_state.correct_answers / st.session_state.total_questions if st.session_state.total_questions > 0 else 0
