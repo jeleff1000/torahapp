@@ -12,7 +12,7 @@ base_dir = os.path.dirname(__file__)
 talmud_data_path = os.path.join(base_dir, 'talmud_topics.parquet')
 torah_data_path = os.path.join(base_dir, 'torah_topics.parquet')
 calendar_data_path = os.path.join(base_dir, 'learning_calendar_2024_2025.parquet')
-sefer_hachinuch_path = r'C:\Users\joeye\OneDrive\Desktop\torahapp\sefer_hachinuch.parquet'
+sefer_hachinuch_path = os.path.join(base_dir, 'sefer_hachinuch.parquet')
 
 talmud_df = pd.read_parquet(talmud_data_path)
 torah_df = pd.read_parquet(torah_data_path)
