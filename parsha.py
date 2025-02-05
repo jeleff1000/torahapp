@@ -7,7 +7,7 @@ def get_surrounding_parshas(parsha, n=3, torah_dict=None):
     end = min(len(keys), index + n + 1)
     return keys[start:index] + keys[index + 1:end]
 
-def parsha_tab(st, calendar_df, torah_dict, torah_df, date_option):
+def parsha_tab(st, calendar_df, torah_dict, torah_df, date_option, sefer_hachinuch_df):
     st.header("Parsha Quiz")
 
     # Initialize session state
@@ -23,6 +23,8 @@ def parsha_tab(st, calendar_df, torah_dict, torah_df, date_option):
         st.session_state.answered_torah = False
     if 'selected_option_torah' not in st.session_state:
         st.session_state.selected_option_torah = None
+    if 'used_commandments' not in st.session_state:
+        st.session_state.used_commandments = set()
 
     if date_option == "Specific Date":
         # Filter calendar data for the selected date and title "Parashat Hashavua"
@@ -63,9 +65,30 @@ def parsha_tab(st, calendar_df, torah_dict, torah_df, date_option):
         random.shuffle(options)
         return f"Which topic is discussed in {parsha}?", options, correct_topic
 
+    def generate_sefer_hachinuch_question(book, parsha):
+        filtered_df = sefer_hachinuch_df[(sefer_hachinuch_df['book'] == book) & (sefer_hachinuch_df['parsha'] == parsha)]
+        if not filtered_df.empty:
+            for _, row in filtered_df.iterrows():
+                if row['text'] not in st.session_state.used_commandments:
+                    correct_text = row['text']
+                    st.session_state.used_commandments.add(correct_text)
+                    surrounding_texts = sefer_hachinuch_df[sefer_hachinuch_df['parsha'] != parsha]['text'].tolist()
+                    incorrect_texts = random.sample(surrounding_texts, 3)
+                    options = incorrect_texts + [correct_text]
+                    random.shuffle(options)
+                    return f"Which commandment is discussed in {parsha}?", options, correct_text
+        return None, None, None
+
+    def generate_combined_question(book, parsha):
+        if random.choice([True, False]):
+            question, options, correct_topic = generate_sefer_hachinuch_question(book, parsha)
+            if question:
+                return question, options, correct_topic
+        return generate_torah_question(parsha)
+
     if st.session_state.question_torah is None or st.session_state.selected_parsha != selected_parsha:
         st.session_state.selected_parsha = selected_parsha
-        st.session_state.question_torah, st.session_state.options_torah, st.session_state.correct_topic_torah = generate_torah_question(selected_parsha)
+        st.session_state.question_torah, st.session_state.options_torah, st.session_state.correct_topic_torah = generate_combined_question(selected_book, selected_parsha)
         st.session_state.answered_torah = False
 
     # Display the question
@@ -84,7 +107,7 @@ def parsha_tab(st, calendar_df, torah_dict, torah_df, date_option):
 
     # Next question button
     if st.session_state.answered_torah and st.button("Next Question", key="next_torah"):
-        st.session_state.question_torah, st.session_state.options_torah, st.session_state.correct_topic_torah = generate_torah_question(selected_parsha)
+        st.session_state.question_torah, st.session_state.options_torah, st.session_state.correct_topic_torah = generate_combined_question(selected_book, selected_parsha)
         st.session_state.answered_torah = False
         st.session_state.selected_option_torah = None
         st.rerun()
