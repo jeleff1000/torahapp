@@ -101,6 +101,8 @@ if 'total_questions' not in st.session_state:
     st.session_state.total_questions = 0
 if 'selected_date' not in st.session_state:
     st.session_state.selected_date = datetime.today().strftime('%Y-%m-%d')
+if 'active_tab' not in st.session_state:
+    st.session_state.active_tab = "Daf Yomi"
 
 # Columns for date input and radio button
 col1, col2 = st.columns([2, 1])
@@ -116,10 +118,12 @@ formatted_date = datetime.strptime(st.session_state.selected_date, '%Y-%m-%d').s
 # Create tabs
 tab1, tab2 = st.tabs(["Daf Yomi", "Parsha"])
 
-with tab1:
+# Display the content of the selected tab
+if tab1:
+    st.session_state.active_tab = "Daf Yomi"
     daf_yomi_tab(st, calendar_df, talmud_dict, seder_tractates, daf_ranges, date_option, shulchan_arukh_df)
-
-with tab2:
+elif tab2:
+    st.session_state.active_tab = "Parsha"
     parsha_tab(st, calendar_df, torah_dict, torah_df, date_option, sefer_hachinuch_df, kitzur_related_df)
 
 # Display progress bar at the bottom

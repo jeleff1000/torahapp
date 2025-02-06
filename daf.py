@@ -109,39 +109,26 @@ def daf_yomi_tab(st, calendar_df, talmud_dict, seder_tractates, daf_ranges, date
 
             options = incorrect_options + [question_text]
             random.shuffle(options)
-            return f"What is the text for {daf}?", options, question_text, full_text
+            return f"According to the Shulchan Aruch, what Halacha comes from this {daf}? (See expanders below for full text)", options, question_text, full_text
         else:
             question, options, correct_topic = generate_talmud_question(daf)
             return question, options, correct_topic, None
 
-    def get_next_question(selected_daf):
-        if random.choice([True, False]):
-            question, options, correct_topic = generate_talmud_question(selected_daf)
-            if question is None:
-                question, options, correct_topic, full_text = generate_shulchan_arukh_question(selected_daf)
-            else:
-                full_text = None
-        else:
-            question, options, correct_topic, full_text = generate_shulchan_arukh_question(selected_daf)
-            if question is None:
-                question, options, correct_topic = generate_talmud_question(selected_daf)
-                full_text = None
-        return question, options, correct_topic, full_text
-
     if st.session_state.question is None or st.session_state.selected_daf != selected_daf:
         st.session_state.selected_daf = selected_daf
-        st.session_state.question, st.session_state.options, st.session_state.correct_topic, st.session_state.full_text = get_next_question(selected_daf)
+        if random.choice([True, False]):
+            st.session_state.question, st.session_state.options, st.session_state.correct_topic = generate_talmud_question(selected_daf)
+            st.session_state.full_text = None
+        else:
+            st.session_state.question, st.session_state.options, st.session_state.correct_topic, st.session_state.full_text = generate_shulchan_arukh_question(selected_daf)
         st.session_state.answered = False
 
     # Display the question
-    if st.session_state.question:
-        st.write(st.session_state.question)
-        st.session_state.selected_option = st.radio("Choose an option:", st.session_state.options)
-    else:
-        st.write("No more questions available.")
+    st.write(st.session_state.question)
+    st.session_state.selected_option = st.radio("Choose an option:", st.session_state.options)
 
     # Check the answer
-    if st.button("Submit") and st.session_state.question:
+    if st.button("Submit"):
         st.session_state.answered = True
         st.session_state.total_questions += 1
         if st.session_state.selected_option == st.session_state.correct_topic:
@@ -155,7 +142,11 @@ def daf_yomi_tab(st, calendar_df, talmud_dict, seder_tractates, daf_ranges, date
 
     # Next question button
     if st.session_state.answered and st.button("Next Question"):
-        st.session_state.question, st.session_state.options, st.session_state.correct_topic, st.session_state.full_text = get_next_question(selected_daf)
+        if random.choice([True, False]):
+            st.session_state.question, st.session_state.options, st.session_state.correct_topic = generate_talmud_question(selected_daf)
+            st.session_state.full_text = None
+        else:
+            st.session_state.question, st.session_state.options, st.session_state.correct_topic, st.session_state.full_text = generate_shulchan_arukh_question(selected_daf)
         st.session_state.answered = False
         st.session_state.selected_option = None
         st.rerun()
