@@ -1,60 +1,57 @@
+import pandas as pd
 import random
 import streamlit as st
 
-def get_surrounding_parshas(parsha, n=3, torah_dict=None):
-    keys = list(torah_dict.keys())
-    index = keys.index(parsha)
-    start = max(0, index - n)
-    end = min(len(keys), index + n + 1)
-    return keys[start:index] + keys[index + 1:end]
+def generate_topic_question(torah_df, book, parsha):
+    filtered_df = torah_df[(torah_df['Book'] == book) & (torah_df['Parsha'] == parsha)]
+    if not filtered_df.empty:
+        topics = filtered_df.iloc[0]['Topics']
+        neighboring_topics = filtered_df.iloc[0]['Neighboring Topics']
+        if isinstance(topics, str):
+            topics = topics.split(', ')
+        if isinstance(neighboring_topics, str):
+            neighboring_topics = neighboring_topics.split(', ')
+        if topics:
+            correct_topic = random.choice(topics)
+            incorrect_topics = [topic for topic in neighboring_topics if topic not in topics]
 
-def generate_torah_question(parsha, torah_dict):
-    if 'used_topics' not in st.session_state:
-        st.session_state.used_topics = set()
+            # Pick three random topics from neighboring topics
+            incorrect_topics = random.sample(incorrect_topics, min(3, len(incorrect_topics)))
 
-    correct_topics = [topic for topic in torah_dict[parsha] if topic not in st.session_state.used_topics]
-    if not correct_topics:
-        return None, None, None, None, None
+            # Ensure there are always 4 options
+            all_topics = torah_df['Topics'].str.split(', ').explode().dropna().unique()
+            while len(incorrect_topics) < 3:
+                random_topic = random.choice(all_topics)
+                if random_topic not in topics and random_topic not in incorrect_topics:
+                    incorrect_topics.append(random_topic)
 
-    correct_topic = correct_topics[0]
-    st.session_state.used_topics.add(correct_topic)
-
-    surrounding_parshas = get_surrounding_parshas(parsha, torah_dict=torah_dict)
-    surrounding_topics = {topic for p in surrounding_parshas for topic in torah_dict[p] if topic not in torah_dict[parsha]}
-    incorrect_topics = random.sample(list(surrounding_topics), 3)
-
-    options = incorrect_topics + [correct_topic]
-    random.shuffle(options)
-    return f"Which topic is discussed in {parsha}?", options, correct_topic, None, None
+            options = incorrect_topics[:3] + [correct_topic]
+            random.shuffle(options)
+            return f"Which topic is discussed in {parsha}?", options, correct_topic
+    return None, None, None
 
 def parsha_tab(st, calendar_df, torah_dict, torah_df, date_option, sefer_hachinuch_df, kitzur_related_df):
     st.header("Parsha Quiz")
 
-    # Shuffle data frames
-    sefer_hachinuch_df = sefer_hachinuch_df.sample(frac=1).reset_index(drop=True)
-    kitzur_related_df = kitzur_related_df.sample(frac=1).reset_index(drop=True)
-
     # Initialize session state
     if 'selected_parsha' not in st.session_state:
         st.session_state.selected_parsha = None
-    if 'question_torah' not in st.session_state:
-        st.session_state.question_torah = None
-    if 'options_torah' not in st.session_state:
-        st.session_state.options_torah = None
-    if 'correct_topic_torah' not in st.session_state:
-        st.session_state.correct_topic_torah = None
-    if 'answered_torah' not in st.session_state:
-        st.session_state.answered_torah = False
-    if 'selected_option_torah' not in st.session_state:
-        st.session_state.selected_option_torah = None
+    if 'question' not in st.session_state:
+        st.session_state.question = None
+    if 'options' not in st.session_state:
+        st.session_state.options = None
+    if 'correct_answer' not in st.session_state:
+        st.session_state.correct_answer = None
+    if 'answered' not in st.session_state:
+        st.session_state.answered = False
+    if 'selected_option' not in st.session_state:
+        st.session_state.selected_option = None
     if 'used_commandments' not in st.session_state:
         st.session_state.used_commandments = set()
     if 'used_kitzur_texts' not in st.session_state:
         st.session_state.used_kitzur_texts = set()
-    if 'used_topics' not in st.session_state:
-        st.session_state.used_topics = set()
     if 'question_generators' not in st.session_state:
-        st.session_state.question_generators = []
+        st.session_state.question_generators = {}
 
     if date_option == "Specific Date":
         filtered_calendar_df = calendar_df[(calendar_df['Date'] == st.session_state.selected_date) & (calendar_df['Title (en)'] == 'Parashat Hashavua')]
@@ -73,43 +70,45 @@ def parsha_tab(st, calendar_df, torah_dict, torah_df, date_option, sefer_hachinu
 
     col1, col2 = st.columns(2)
     with col1:
-        selected_book = st.selectbox("Select a Book", book_list, index=0, key="book_torah")
+        selected_book = st.selectbox("Select a Book", book_list, index=0, key="book")
     with col2:
         if date_option == "Specific Date":
             parsha_list = [selected_parsha] if selected_book else []
         else:
             parsha_list = torah_df[torah_df['Book'] == selected_book]['Parsha'].tolist() if selected_book else []
-        selected_parsha = st.selectbox("Select a Parsha", parsha_list, index=0, key="parsha_torah")
+        selected_parsha = st.selectbox("Select a Parsha", parsha_list, index=0, key="parsha")
 
     def generate_sefer_hachinuch_question(book, parsha):
-        filtered_df = sefer_hachinuch_df[(sefer_hachinuch_df['book'] == book) & (sefer_hachinuch_df['parsha'] == parsha)]
+        sefer_hachinuch_df_shuffled = sefer_hachinuch_df.sample(frac=1).reset_index(drop=True)
+        filtered_df = sefer_hachinuch_df_shuffled[(sefer_hachinuch_df_shuffled['book'] == book) & (sefer_hachinuch_df_shuffled['parsha'] == parsha)]
         if not filtered_df.empty:
             for _, row in filtered_df.iterrows():
                 if row['text'] not in st.session_state.used_commandments:
                     correct_text = row['text']
                     st.session_state.used_commandments.add(correct_text)
-                    surrounding_texts = sefer_hachinuch_df[sefer_hachinuch_df['parsha'] != parsha]['text'].tolist()
-                    incorrect_texts = random.sample(surrounding_texts, 3)
+                    surrounding_texts = sefer_hachinuch_df_shuffled[sefer_hachinuch_df_shuffled['parsha'] != parsha]['text'].tolist()
+                    incorrect_texts = random.sample(surrounding_texts, min(3, len(surrounding_texts)))
                     options = incorrect_texts + [correct_text]
                     random.shuffle(options)
-                    return f"Which commandment is discussed in {parsha}?", options, correct_text, None, None
-        return None, None, None, None, None
+                    return f"Which commandment is discussed in {parsha}?", options, correct_text
+        return None, None, None
 
     def generate_kitzur_question(book, parsha):
-        filtered_df = kitzur_related_df[(kitzur_related_df['Book'] == book) & (kitzur_related_df['Parsha'] == parsha)]
+        kitzur_related_df_shuffled = kitzur_related_df.sample(frac=1).reset_index(drop=True)
+        filtered_df = kitzur_related_df_shuffled[(kitzur_related_df_shuffled['Book'] == book) & (kitzur_related_df_shuffled['Parsha'] == parsha)]
         if not filtered_df.empty:
             for _, row in filtered_df.iterrows():
                 if row['Text'] not in st.session_state.used_kitzur_texts:
                     correct_text_short = '. '.join(row['Text'].split('. ')[:2]) + '.'  # Get the first two sentences
                     correct_text_full = row['Text']  # Get the full text
                     reference = row['Source Ref']  # Get the reference
-                    st.session_state.used_kitzur_texts.add(correct_text_short)
-                    surrounding_texts_short = ['. '.join(text.split('. ')[:2]) + '.' for text in kitzur_related_df[kitzur_related_df['Parsha'] != parsha]['Text'].tolist()]
-                    surrounding_texts_full = [text for text in kitzur_related_df[kitzur_related_df['Parsha'] != parsha]['Text'].tolist()]
-                    references = [row['Source Ref'] for _, row in kitzur_related_df[kitzur_related_df['Parsha'] != parsha].iterrows()]
-                    incorrect_texts_short = random.sample(surrounding_texts_short, 3)
-                    incorrect_texts_full = random.sample(surrounding_texts_full, 3)
-                    incorrect_references = random.sample(references, 3)
+                    st.session_state.used_kitzur_texts.add(row['Text'])
+                    surrounding_texts_short = ['. '.join(text.split('. ')[:2]) + '.' for text in kitzur_related_df_shuffled[kitzur_related_df_shuffled['Parsha'] != parsha]['Text'].tolist()]
+                    surrounding_texts_full = [text for text in kitzur_related_df_shuffled[kitzur_related_df_shuffled['Parsha'] != parsha]['Text'].tolist()]
+                    references = [row['Source Ref'] for _, row in kitzur_related_df_shuffled[kitzur_related_df_shuffled['Parsha'] != parsha].iterrows()]
+                    incorrect_texts_short = random.sample(surrounding_texts_short, min(3, len(surrounding_texts_short)))
+                    incorrect_texts_full = random.sample(surrounding_texts_full, min(3, len(surrounding_texts_full)))
+                    incorrect_references = random.sample(references, min(3, len(references)))
                     options_short = incorrect_texts_short + [correct_text_short]
                     options_full = incorrect_texts_full + [correct_text_full]
                     references = incorrect_references + [reference]
@@ -121,46 +120,73 @@ def parsha_tab(st, calendar_df, torah_dict, torah_df, date_option, sefer_hachinu
 
     def generate_combined_question(book, parsha):
         if not st.session_state.question_generators:
-            st.session_state.question_generators = [
-                lambda: generate_sefer_hachinuch_question(book, parsha),
-                lambda: generate_kitzur_question(book, parsha),
-                lambda: generate_torah_question(parsha, torah_dict)
-            ]
-            random.shuffle(st.session_state.question_generators)
+            st.session_state.question_generators = {
+                'sefer_hachinuch': lambda: generate_sefer_hachinuch_question(book, parsha),
+                'kitzur': lambda: generate_kitzur_question(book, parsha),
+                'topics': lambda: generate_topic_question(torah_df, book, parsha)
+            }
 
-        for generator in st.session_state.question_generators:
-            question, options, correct_topic, full_texts, references = generator()
-            if question:
-                st.session_state.question_generators.remove(generator)
-                return question, options, correct_topic, full_texts, references
+        available_generators = list(st.session_state.question_generators.keys())
+        while available_generators:
+            generator_key = random.choice(available_generators)
+            result = st.session_state.question_generators[generator_key]()
+            if result[0]:  # Check if the question is not None
+                return result
+            else:
+                available_generators.remove(generator_key)  # Remove exhausted generator
         return None, None, None, None, None
 
-    if st.session_state.question_torah is None or st.session_state.selected_parsha != selected_parsha:
+    if st.session_state.selected_parsha != selected_parsha:
         st.session_state.selected_parsha = selected_parsha
-        st.session_state.question_torah, st.session_state.options_torah, st.session_state.correct_topic_torah, st.session_state.full_texts_torah, st.session_state.references_torah = generate_combined_question(selected_book, selected_parsha)
-        st.session_state.answered_torah = False
+        st.session_state.question = None
+        st.session_state.options = None
+        st.session_state.correct_answer = None
+        st.session_state.answered = False
+        st.session_state.selected_option = None
+        st.session_state.question_generators = {}
 
-    st.write(st.session_state.question_torah)
-    st.session_state.selected_option_torah = st.radio("Choose an option:", st.session_state.options_torah)
+    if st.session_state.question is None:
+        result = generate_combined_question(selected_book, selected_parsha)
+        if result[0] is None:
+            st.write("No more questions available.")
+            return
+        st.session_state.question = result[0]
+        st.session_state.options = result[1]
+        st.session_state.correct_answer = result[2]
+        st.session_state.full_texts = result[3] if len(result) > 3 else None
+        st.session_state.references = result[4] if len(result) > 4 else None
+        st.session_state.answered = False
 
-    if st.button("Submit", key="submit_torah"):
-        st.session_state.answered_torah = True
+    st.write(st.session_state.question)
+    st.session_state.selected_option = st.radio("Choose an option:", st.session_state.options, key="radio_option")
+
+    if st.button("Submit", key="submit"):
+        st.session_state.answered = True
         st.session_state.total_questions += 1
-        if st.session_state.selected_option_torah == st.session_state.correct_topic_torah:
+        if st.session_state.selected_option == st.session_state.correct_answer:
             st.session_state.correct_answers += 1
             st.success("Correct!")
         else:
-            st.error(f"Incorrect! The correct answer is: {st.session_state.correct_topic_torah}")
+            st.error(f"Incorrect! The correct answer is: {st.session_state.correct_answer}")
 
-    if st.session_state.answered_torah and st.button("Next Question", key="next_torah"):
-        st.session_state.question_torah, st.session_state.options_torah, st.session_state.correct_topic_torah, st.session_state.full_texts_torah, st.session_state.references_torah = generate_combined_question(selected_book, selected_parsha)
-        st.session_state.answered_torah = False
-        st.session_state.selected_option_torah = None
+    if st.session_state.answered and st.button("Next Question", key="next"):
+        result = generate_combined_question(selected_book, selected_parsha)
+        if result[0] is None:
+            st.write("No more questions available.")
+            return
+        st.session_state.question = result[0]
+        st.session_state.options = result[1]
+        st.session_state.correct_answer = result[2]
+        st.session_state.full_texts = result[3] if len(result) > 3 else None
+        st.session_state.references = result[4] if len(result) > 4 else None
+        st.session_state.answered = False
+        st.session_state.selected_option = None
         st.rerun()
 
-    if st.session_state.full_texts_torah:
-        for i, option in enumerate(st.session_state.options_torah):
+    if st.session_state.full_texts:
+        for i, option in enumerate(st.session_state.options):
             full_text = next((row['Text'] for _, row in kitzur_related_df.iterrows() if option in row['Text']), None)
             reference = next((row['Source Ref'] for _, row in kitzur_related_df.iterrows() if option in row['Text']), None)
             if full_text and reference:
-                st.expander(f"Option {chr(65 + i)}").write(f"**{reference}**: {full_text}")
+                with st.expander(f"Option {chr(65 + i)}"):
+                    st.write(f"**{reference}**: {full_text}")

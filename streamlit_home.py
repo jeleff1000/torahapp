@@ -1,6 +1,6 @@
-import streamlit as st
-import pandas as pd
 import os
+import pandas as pd
+import streamlit as st
 from datetime import datetime
 from daf import daf_yomi_tab
 from parsha import parsha_tab
@@ -14,12 +14,14 @@ torah_data_path = os.path.join(base_dir, 'torah_topics.parquet')
 calendar_data_path = os.path.join(base_dir, 'learning_calendar_2024_2025.parquet')
 sefer_hachinuch_path = os.path.join(base_dir, 'sefer_hachinuch.parquet')
 kitzur_related_path = os.path.join(base_dir, 'kitzur_related_by_parsha.parquet')
+shulchan_arukh_path = os.path.join(base_dir, 'shulchan_arukh_references_by_daf.parquet')
 
 talmud_df = pd.read_parquet(talmud_data_path)
 torah_df = pd.read_parquet(torah_data_path)
 calendar_df = pd.read_parquet(calendar_data_path)
 sefer_hachinuch_df = pd.read_parquet(sefer_hachinuch_path)
 kitzur_related_df = pd.read_parquet(kitzur_related_path)
+shulchan_arukh_df = pd.read_parquet(shulchan_arukh_path)
 
 # Split the topics into lists
 talmud_df['Topics'] = talmud_df['Topics'].apply(lambda x: x.split(', '))
@@ -115,7 +117,7 @@ formatted_date = datetime.strptime(st.session_state.selected_date, '%Y-%m-%d').s
 tab1, tab2 = st.tabs(["Daf Yomi", "Parsha"])
 
 with tab1:
-    daf_yomi_tab(st, calendar_df, talmud_dict, seder_tractates, daf_ranges, date_option)
+    daf_yomi_tab(st, calendar_df, talmud_dict, seder_tractates, daf_ranges, date_option, shulchan_arukh_df)
 
 with tab2:
     parsha_tab(st, calendar_df, torah_dict, torah_df, date_option, sefer_hachinuch_df, kitzur_related_df)
