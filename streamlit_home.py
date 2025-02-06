@@ -133,7 +133,7 @@ formatted_date = datetime.strptime(st.session_state.selected_date, '%Y-%m-%d').s
 # Display the content of the selected view
 if st.session_state.active_view == "Daf Yomi":
     daf_yomi_tab(st, calendar_df, talmud_dict, seder_tractates, daf_ranges, date_option, shulchan_arukh_df)
-elif st.session_state.active_view == "Parsha":
+elif st.session_state.active_view == "Parshat HaShavua":
     parsha_tab(st, calendar_df, torah_dict, torah_df, date_option, sefer_hachinuch_df, kitzur_related_df)
 
 # Display progress bar at the bottom
