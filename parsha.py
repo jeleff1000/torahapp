@@ -115,7 +115,7 @@ def parsha_tab(st, calendar_df, torah_dict, torah_df, date_option, sefer_hachinu
                     combined_options = list(zip(options_short, options_full, references))
                     random.shuffle(combined_options)
                     options_short, options_full, references = zip(*combined_options)
-                    return f"According to the Kitzur Shulchan Aruch, which Halacha comes from {parsha}?", options_short, correct_text_short, options_full, references
+                    return f"According to the Kitzur Shulchan Aruch, which Halacha comes from {parsha}? (See expanders below for full text)", options_short, correct_text_short, options_full, references
         return None, None, None, None, None
 
     def generate_combined_question(book, parsha):
