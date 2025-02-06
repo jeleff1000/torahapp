@@ -101,8 +101,23 @@ if 'total_questions' not in st.session_state:
     st.session_state.total_questions = 0
 if 'selected_date' not in st.session_state:
     st.session_state.selected_date = datetime.today().strftime('%Y-%m-%d')
-if 'active_tab' not in st.session_state:
-    st.session_state.active_tab = "Daf Yomi"
+if 'active_view' not in st.session_state:
+    st.session_state.active_view = "Daf Yomi"
+
+# Sidebar for view selection
+st.sidebar.title("Navigation")
+view = st.sidebar.radio("Select View", ["Daf Yomi", "Parsha"])
+
+# Reset questions and answers when switching views
+if st.session_state.active_view != view:
+    st.session_state.correct_answers = 0
+    st.session_state.total_questions = 0
+    st.session_state.question = None
+    st.session_state.options = None
+    st.session_state.correct_topic = None
+    st.session_state.full_text = None
+    st.session_state.answered = False
+    st.session_state.active_view = view
 
 # Columns for date input and radio button
 col1, col2 = st.columns([2, 1])
@@ -115,15 +130,10 @@ with col2:
 # Format the selected date
 formatted_date = datetime.strptime(st.session_state.selected_date, '%Y-%m-%d').strftime('%d %b %Y')
 
-# Create tabs
-tab1, tab2 = st.tabs(["Daf Yomi", "Parsha"])
-
-# Display the content of the selected tab
-if tab1:
-    st.session_state.active_tab = "Daf Yomi"
+# Display the content of the selected view
+if st.session_state.active_view == "Daf Yomi":
     daf_yomi_tab(st, calendar_df, talmud_dict, seder_tractates, daf_ranges, date_option, shulchan_arukh_df)
-elif tab2:
-    st.session_state.active_tab = "Parsha"
+elif st.session_state.active_view == "Parsha":
     parsha_tab(st, calendar_df, torah_dict, torah_df, date_option, sefer_hachinuch_df, kitzur_related_df)
 
 # Display progress bar at the bottom
