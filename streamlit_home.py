@@ -1,9 +1,11 @@
 import os
 import pandas as pd
 import streamlit as st
+import numpy as np
 from datetime import datetime
-from daf import daf_yomi_tab
-from parsha import parsha_tab
+from daf_tab.daf import daf_yomi_tab
+from parsha_tab.parsha_home import parsha_tab
+
 
 # Get the directory of the current script
 base_dir = os.path.dirname(__file__)
@@ -31,7 +33,7 @@ top_verses_df = pd.read_parquet(top_verses_path)
 
 # Split the topics into lists
 talmud_df['Topics'] = talmud_df['Topics'].apply(lambda x: x.split(', '))
-torah_df['Topics'] = torah_df['Topics'].apply(lambda x: x.split(', '))
+torah_df['Text'] = torah_df['Text'].apply(lambda x: x.split(', '))
 
 # Combine topics for 'a' and 'b' suffixes under the same key
 combined_talmud_dict = {}
@@ -43,7 +45,7 @@ for daf, topics in talmud_df.set_index('Daf')['Topics'].to_dict().items():
 
 # Convert sets to lists
 talmud_dict = {k: list(v) for k, v in combined_talmud_dict.items()}
-torah_dict = torah_df.set_index('Parsha')['Topics'].to_dict()
+torah_dict = torah_df.set_index('Parsha')['Text'].to_dict()
 
 # Define the Seders and their corresponding tractates
 seder_tractates = {
