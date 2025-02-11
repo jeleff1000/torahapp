@@ -38,11 +38,11 @@ def parsha_tab(st, calendar_df, torah_dict, torah_df, date_option, sefer_hachinu
         st.session_state.selected_date = date_option
     if 'source_filters' not in st.session_state:
         st.session_state.source_filters = {
-            'Top Verses': True,
+            'Quotes': True,
             'Rashi': True,
-            'Torah': True,
-            'Sefer Hachinuch': True,
-            'Kitzur': True
+            'Topics': True,
+            'Mitzvot': True,
+            'Halachot': True
         }
 
     # Checkbox filters for each source category
@@ -52,6 +52,7 @@ def parsha_tab(st, calendar_df, torah_dict, torah_df, date_option, sefer_hachinu
             with cols[i]:
                 st.session_state.source_filters[source] = st.checkbox(source, value=value)
         if st.button("Apply Filters"):
+            st.session_state.question = None  # Reset the current question
             st.rerun()
 
     # Extract the Parsha for the given date
@@ -87,11 +88,11 @@ def parsha_tab(st, calendar_df, torah_dict, torah_df, date_option, sefer_hachinu
     kitzur_related_df = clean_values(kitzur_related_df)
 
     # Add source column to each DataFrame
-    top_verses_df['Source'] = 'Top Verses'
+    top_verses_df['Source'] = 'Quotes'
     top_rashis_df['Source'] = 'Rashi'
-    torah_df['Source'] = 'Torah'
-    sefer_hachinuch_df['Source'] = 'Sefer Hachinuch'
-    kitzur_related_df['Source'] = 'Kitzur'
+    torah_df['Source'] = 'Topics'
+    sefer_hachinuch_df['Source'] = 'Mitzvot'
+    kitzur_related_df['Source'] = 'Halachot'
 
     # Ensure each DataFrame has Summary, Summary Incorrect Answers, and Source Ref columns
     for df in [top_verses_df, top_rashis_df, torah_df, sefer_hachinuch_df, kitzur_related_df]:
@@ -113,8 +114,14 @@ def parsha_tab(st, calendar_df, torah_dict, torah_df, date_option, sefer_hachinu
 
     st.session_state.questions_df = combined_df.copy()  # Preload the entire combined DataFrame
 
-    # Filter questions based on source filters
-    filtered_df = combined_df[combined_df['Source'].apply(lambda x: st.session_state.source_filters.get(x, True))]
+    # Filter questions based on source filters, including the current question
+    if st.session_state.question:
+        current_question_row = combined_df[combined_df['Text'] == st.session_state.question]
+        filtered_df = combined_df[combined_df['Source'].apply(lambda x: st.session_state.source_filters.get(x, True))]
+        filtered_df = pd.concat([filtered_df, current_question_row]).drop_duplicates().reset_index(drop=True)
+    else:
+        filtered_df = combined_df[combined_df['Source'].apply(lambda x: st.session_state.source_filters.get(x, True))]
+
     st.session_state.questions_df = filtered_df.copy()  # Update the session state with the filtered DataFrame
 
     if st.session_state.selected_parsha != selected_parsha:
@@ -158,7 +165,7 @@ def parsha_tab(st, calendar_df, torah_dict, torah_df, date_option, sefer_hachinu
     #st.dataframe(st.session_state.questions_df)
 
     # Display expanders for each option if the question comes from Rashi or Kitzur
-    if st.session_state.options and st.session_state.question_source in ["Rashi", "Kitzur"]:
+    if st.session_state.options and st.session_state.question_source in ["Rashi", "Halachot"]:
         choice_labels = ["Option A", "Option B", "Option C", "Option D"]
         for i, option in enumerate(st.session_state.options):
             with st.expander(f"{choice_labels[i]}"):

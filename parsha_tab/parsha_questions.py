@@ -39,15 +39,15 @@ def generate_combined_question():
     # Formulate the question based on the Source column
     source = selected_row['Source']
     parsha = selected_row['Parsha']
-    if source == "Top Verses":
+    if source == "Quotes":
         question = f"Which text is from {parsha}?"
     elif source == "Rashi":
         question = f"Which Rashi applies to Parshat {parsha}? (See below for full text)"
-    elif source == "Torah":
-        question = f"Which topic is discussed about Parshat {parsha}?"
-    elif source == "Sefer Hachinuch":
+    elif source == "Topics":
+        question = f"Which topic is applies to Parshat {parsha}?"
+    elif source == "Mitzvot":
         question = f"Which commandment is from Parshat {parsha}?"
-    elif source == "Kitzur":
+    elif source == "Halachot":
         question = f"Which Halacha comes from Parshat {parsha}? (See below for full text)"
     else:
         question = f"Which text is from {parsha} according to {source}?"

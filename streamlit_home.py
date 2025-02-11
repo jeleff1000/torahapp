@@ -6,6 +6,8 @@ from datetime import datetime
 from daf_tab.daf import daf_yomi_tab
 from parsha_tab.parsha_home import parsha_tab
 
+# Use numpy's triu function
+triu = np.triu
 
 # Get the directory of the current script
 base_dir = os.path.dirname(__file__)
@@ -31,17 +33,17 @@ top_rashis_df = pd.read_parquet(top_rashis_path)
 rashi_on_tractates_df = pd.read_parquet(rashi_on_tractates_path)
 top_verses_df = pd.read_parquet(top_verses_path)
 
-# Split the topics into lists
-talmud_df['Topics'] = talmud_df['Topics'].apply(lambda x: x.split(', '))
+# Split the text into lists
+talmud_df['Text'] = talmud_df['Text'].apply(lambda x: x.split(', '))
 torah_df['Text'] = torah_df['Text'].apply(lambda x: x.split(', '))
 
-# Combine topics for 'a' and 'b' suffixes under the same key
+# Combine text for 'a' and 'b' suffixes under the same key
 combined_talmud_dict = {}
-for daf, topics in talmud_df.set_index('Daf')['Topics'].to_dict().items():
+for daf, texts in talmud_df.set_index('Daf')['Text'].to_dict().items():
     base_daf = daf[:-1] if daf[-1] in ['a', 'b'] else daf
     if base_daf not in combined_talmud_dict:
         combined_talmud_dict[base_daf] = set()
-    combined_talmud_dict[base_daf].update(topics)
+    combined_talmud_dict[base_daf].update(texts)
 
 # Convert sets to lists
 talmud_dict = {k: list(v) for k, v in combined_talmud_dict.items()}
@@ -142,7 +144,7 @@ formatted_date = datetime.strptime(st.session_state.selected_date, '%Y-%m-%d').s
 if st.session_state.active_view == "Home":
     st.write("Welcome to the Daily Torah Quiz! Use the sidebar to navigate to Daf Yomi or Parsha quizzes.")
 elif st.session_state.active_view == "Daf Yomi":
-    daf_yomi_tab(st, calendar_df, talmud_dict, seder_tractates, daf_ranges, date_option, shulchan_arukh_df)
+    daf_yomi_tab(st, calendar_df, talmud_dict, seder_tractates, daf_ranges, date_option, shulchan_arukh_df, rashi_on_tractates_df)
 elif st.session_state.active_view == "Parsha":
     parsha_tab(st, calendar_df, torah_dict, torah_df, date_option, sefer_hachinuch_df, kitzur_related_df, top_rashis_df, top_verses_df)
 
