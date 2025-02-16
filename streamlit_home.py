@@ -5,6 +5,12 @@ import numpy as np
 from datetime import datetime
 from daf_tab.daf import daf_yomi_tab
 from parsha_tab.parsha_home import parsha_tab
+from yerushalmi_tab.yerushalmi_home import yerushalmi_tab
+from mishnah_yomi_tab.mishnah_yomi_home import mishnah_yomi_tab
+from haftarah_tab.haftarah_home import haftarah_tab
+from nine_two_nine_tab.nine_two_nine_home import nine_two_nine_tab
+from scores_tab.scores_home import scores_tab
+import login_info
 
 # Use numpy's triu function
 triu = np.triu
@@ -13,41 +19,39 @@ triu = np.triu
 base_dir = os.path.dirname(__file__)
 
 # Load the data from the parquet files
-talmud_data_path = os.path.join(base_dir, 'talmud_topics.parquet')
-torah_data_path = os.path.join(base_dir, 'torah_topics.parquet')
 calendar_data_path = os.path.join(base_dir, 'learning_calendar_2024_2025.parquet')
-sefer_hachinuch_path = os.path.join(base_dir, 'sefer_hachinuch.parquet')
-kitzur_related_path = os.path.join(base_dir, 'kitzur_related_by_parsha.parquet')
-shulchan_arukh_path = os.path.join(base_dir, 'shulchan_arukh_references_by_daf.parquet')
-top_rashis_path = os.path.join(base_dir, 'top_rashis.parquet')
-rashi_on_tractates_path = os.path.join(base_dir, 'rashi_on_tractates_with_seder.parquet')
-top_verses_path = os.path.join(base_dir, 'top_verses.parquet')
-
-talmud_df = pd.read_parquet(talmud_data_path)
-torah_df = pd.read_parquet(torah_data_path)
 calendar_df = pd.read_parquet(calendar_data_path)
-sefer_hachinuch_df = pd.read_parquet(sefer_hachinuch_path)
-kitzur_related_df = pd.read_parquet(kitzur_related_path)
-shulchan_arukh_df = pd.read_parquet(shulchan_arukh_path)
-top_rashis_df = pd.read_parquet(top_rashis_path)
-rashi_on_tractates_df = pd.read_parquet(rashi_on_tractates_path)
-top_verses_df = pd.read_parquet(top_verses_path)
 
-# Split the text into lists
-talmud_df['Text'] = talmud_df['Text'].apply(lambda x: x.split(', '))
-torah_df['Text'] = torah_df['Text'].apply(lambda x: x.split(', '))
+# Updated paths for Daf Yomi, Parsha, Haftarah, and 929 Parquet files
+daf_yomi_path = os.path.join(base_dir, 'merged_daf_yomi_data.parquet')
+parsha_path = os.path.join(base_dir, 'merged_parsha_data.parquet')
+haftarah_path = os.path.join(base_dir, 'merged_haftarah_data.parquet')
+nine_two_nine_path = os.path.join(base_dir, 'merged_929_data.parquet')
 
-# Combine text for 'a' and 'b' suffixes under the same key
-combined_talmud_dict = {}
-for daf, texts in talmud_df.set_index('Daf')['Text'].to_dict().items():
-    base_daf = daf[:-1] if daf[-1] in ['a', 'b'] else daf
-    if base_daf not in combined_talmud_dict:
-        combined_talmud_dict[base_daf] = set()
-    combined_talmud_dict[base_daf].update(texts)
+# Load the dataframes with error handling
+try:
+    daf_yomi_df = pd.read_parquet(daf_yomi_path)
+except FileNotFoundError:
+    st.error(f"File not found: {daf_yomi_path}")
+    daf_yomi_df = pd.DataFrame()
 
-# Convert sets to lists
-talmud_dict = {k: list(v) for k, v in combined_talmud_dict.items()}
-torah_dict = torah_df.set_index('Parsha')['Text'].to_dict()
+try:
+    parsha_df = pd.read_parquet(parsha_path)
+except FileNotFoundError:
+    st.error(f"File not found: {parsha_path}")
+    parsha_df = pd.DataFrame()
+
+try:
+    haftarah_df = pd.read_parquet(haftarah_path)
+except FileNotFoundError:
+    st.error(f"File not found: {haftarah_path}")
+    haftarah_df = pd.DataFrame()
+
+try:
+    nine_two_nine_df = pd.read_parquet(nine_two_nine_path)
+except FileNotFoundError:
+    st.error(f"File not found: {nine_two_nine_path}")
+    nine_two_nine_df = pd.DataFrame()
 
 # Define the Seders and their corresponding tractates
 seder_tractates = {
@@ -101,33 +105,30 @@ daf_ranges = {
     "Niddah": range(2, 74)
 }
 
-# Streamlit app
-st.title("Daily Torah Quiz")
+# Initialize session state
+login_info.initialize_session_state()
 
-# Initialize session state for progress tracking
-if 'correct_answers' not in st.session_state:
-    st.session_state.correct_answers = 0
-if 'total_questions' not in st.session_state:
-    st.session_state.total_questions = 0
-if 'selected_date' not in st.session_state:
-    st.session_state.selected_date = datetime.today().strftime('%Y-%m-%d')
-if 'active_view' not in st.session_state:
-    st.session_state.active_view = "Home"
+# Function to reset session state
+def reset_session_state():
+    for key in list(st.session_state.keys()):
+        if key not in ['username', 'password', 'logged_in', 'selected_date']:
+            del st.session_state[key]
+
+# Function to save scores
+def save_score(username, category, score):
+    scores_file_path = os.path.join(base_dir, 'scores_tab', 'scores.parquet')
+    today = datetime.today().strftime('%Y-%m-%d')
+    new_score = pd.DataFrame([[username, category, score, today]], columns=['username', 'category', 'score', 'date'])
+    try:
+        scores_df = pd.read_parquet(scores_file_path)
+        scores_df = pd.concat([scores_df, new_score], ignore_index=True)
+    except FileNotFoundError:
+        scores_df = new_score
+    scores_df.to_parquet(scores_file_path, index=False)
 
 # Sidebar for view selection
 st.sidebar.title("Navigation")
-view = st.sidebar.radio("Select View", ["Home", "Daf Yomi", "Parsha"])
-
-# Reset questions and answers when switching views
-if st.session_state.active_view != view:
-    st.session_state.correct_answers = 0
-    st.session_state.total_questions = 0
-    st.session_state.question = None
-    st.session_state.options = None
-    st.session_state.correct_topic = None
-    st.session_state.full_text = None
-    st.session_state.answered = False
-    st.session_state.active_view = view
+view = st.sidebar.radio("Select View", ["Home", "Daf Yomi", "Parsha", "Yerushalmi", "929", "Mishnah Yomi", "Haftarah", "Scores"], on_change=reset_session_state)
 
 # Columns for date input and radio button
 col1, col2 = st.columns([2, 1])
@@ -141,14 +142,38 @@ with col2:
 formatted_date = datetime.strptime(st.session_state.selected_date, '%Y-%m-%d').strftime('%d %b %Y')
 
 # Display the content of the selected view
-if st.session_state.active_view == "Home":
-    st.write("Welcome to the Daily Torah Quiz! Use the sidebar to navigate to Daf Yomi or Parsha quizzes.")
-elif st.session_state.active_view == "Daf Yomi":
-    daf_yomi_tab(st, calendar_df, talmud_dict, seder_tractates, daf_ranges, date_option, shulchan_arukh_df, rashi_on_tractates_df)
-elif st.session_state.active_view == "Parsha":
-    parsha_tab(st, calendar_df, torah_dict, torah_df, date_option, sefer_hachinuch_df, kitzur_related_df, top_rashis_df, top_verses_df)
+if view == "Home":
+    st.title("Daily Torah Quiz")
+    if st.session_state.logged_in:
+        st.write(f"Welcome {st.session_state.username}!")
+    else:
+        st.write("Welcome to the Daily Torah Quiz! Use the sidebar to navigate to Daf Yomi, Parsha, Yerushalmi, 929, Mishnah Yomi, or Haftarah quizzes.")
+        st.write("Login or create a username below:")
+        username = st.text_input("Username")
+        password = st.text_input("Password", type="password")
+        if st.button("Login"):
+            login_info.login(username, password)
+        if st.button("Continue as Guest"):
+            st.session_state.logged_in = True
+            st.session_state.username = "Guest"
+        new_username = st.text_input("New Username")
+        new_password = st.text_input("New Password (optional)", type="password")
+        if st.button("Register"):
+            login_info.register(new_username, new_password)
+elif view == "Daf Yomi":
+    daf_yomi_tab(st, calendar_df, daf_yomi_df, seder_tractates, daf_ranges, date_option)
+elif view == "Parsha":
+    parsha_tab(st, calendar_df, date_option, parsha_path)
+elif view == "Yerushalmi":
+    yerushalmi_tab(st, calendar_df, talmud_dict, seder_tractates, daf_ranges, date_option)
+elif view == "Mishnah Yomi":
+    mishnah_yomi_tab(st, calendar_df, talmud_dict, seder_tractates, daf_ranges, date_option)
+elif view == "Haftarah":
+    haftarah_tab(st, calendar_df, date_option, haftarah_path)
+elif view == "929":
+    nine_two_nine_tab(st, calendar_df, nine_two_nine_df, date_option)
+elif view == "Scores":
+    scores_tab()
 
-# Display progress bar at the bottom
-progress = st.session_state.correct_answers / st.session_state.total_questions if st.session_state.total_questions > 0 else 0
-st.progress(progress)
-st.write(f"Score: {st.session_state.correct_answers}/{st.session_state.total_questions} ({progress * 100:.2f}%)")
+if st.session_state.logged_in and st.button("Logout"):
+    login_info.logout()

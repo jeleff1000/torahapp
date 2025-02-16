@@ -1,6 +1,20 @@
 import streamlit as st
 import pandas as pd
 from .parsha_questions import generate_combined_question
+from datetime import datetime
+import os
+
+def save_score(username, category, score):
+    base_dir = os.path.dirname(__file__)
+    scores_file_path = os.path.join(base_dir, '..', 'scores_tab', 'scores.parquet')
+    today = datetime.today().strftime('%Y-%m-%d')
+    new_score = pd.DataFrame([[username, category, score, today]], columns=['username', 'category', 'score', 'date'])
+    try:
+        scores_df = pd.read_parquet(scores_file_path)
+        scores_df = pd.concat([scores_df, new_score], ignore_index=True)
+    except FileNotFoundError:
+        scores_df = new_score
+    scores_df.to_parquet(scores_file_path, index=False)
 
 def preprocess_df(df):
     for column in df.columns:
@@ -12,8 +26,11 @@ def clean_values(df):
         df[column] = df[column].apply(lambda x: x.replace("['", "").replace("']", "") if isinstance(x, str) else x)
     return df
 
-def parsha_tab(st, calendar_df, torah_dict, torah_df, date_option, sefer_hachinuch_df, kitzur_related_df, top_rashis_df, top_verses_df):
+def parsha_tab(st, calendar_df, date_option, parsha_path):
     st.header("Parsha Quiz")
+
+    # Load the parsha DataFrame
+    parsha_df = pd.read_parquet(parsha_path)
 
     # Initialize session state
     if 'selected_parsha' not in st.session_state:
@@ -66,61 +83,32 @@ def parsha_tab(st, calendar_df, torah_dict, torah_df, date_option, sefer_hachinu
         st.write(calendar_df['Date'].unique())
         return
 
-    # Filter DataFrames to match the selected parsha
-    top_verses_df = top_verses_df[top_verses_df['Parsha'] == selected_parsha]
-    top_rashis_df = top_rashis_df[top_rashis_df['Parsha'] == selected_parsha]
-    torah_df = torah_df[torah_df['Parsha'] == selected_parsha]
-    sefer_hachinuch_df = sefer_hachinuch_df[sefer_hachinuch_df['Parsha'] == selected_parsha]
-    kitzur_related_df = kitzur_related_df[kitzur_related_df['Parsha'] == selected_parsha]
+    # Filter DataFrame to match the selected parsha
+    parsha_df = parsha_df[parsha_df['parsha'] == selected_parsha]
 
-    # Preprocess DataFrames to ensure all elements are strings
-    top_verses_df = preprocess_df(top_verses_df)
-    top_rashis_df = preprocess_df(top_rashis_df)
-    torah_df = preprocess_df(torah_df)
-    sefer_hachinuch_df = preprocess_df(sefer_hachinuch_df)
-    kitzur_related_df = preprocess_df(kitzur_related_df)
+    # Preprocess DataFrame to ensure all elements are strings
+    parsha_df = preprocess_df(parsha_df)
 
-    # Clean DataFrames to remove unwanted formatting
-    top_verses_df = clean_values(top_verses_df)
-    top_rashis_df = clean_values(top_rashis_df)
-    torah_df = clean_values(torah_df)
-    sefer_hachinuch_df = clean_values(sefer_hachinuch_df)
-    kitzur_related_df = clean_values(kitzur_related_df)
+    # Clean DataFrame to remove unwanted formatting
+    parsha_df = clean_values(parsha_df)
 
-    # Add source column to each DataFrame
-    top_verses_df['Source'] = 'Quotes'
-    top_rashis_df['Source'] = 'Rashi'
-    torah_df['Source'] = 'Topics'
-    sefer_hachinuch_df['Source'] = 'Mitzvot'
-    kitzur_related_df['Source'] = 'Halachot'
+    # Add source column to the DataFrame
+    parsha_df['source'] = 'Parsha'
 
-    # Ensure each DataFrame has Summary, Summary Incorrect Answers, and Source Ref columns
-    for df in [top_verses_df, top_rashis_df, torah_df, sefer_hachinuch_df, kitzur_related_df]:
-        if 'Summary' not in df.columns:
-            df['Summary'] = ""
-        if 'Summary Incorrect Answers' not in df.columns:
-            df['Summary Incorrect Answers'] = ""
-        if 'Source Ref' not in df.columns:
-            df['Source Ref'] = ""
+    # Ensure the DataFrame has source ref column
+    for column in ['source ref']:
+        if column not in parsha_df.columns:
+            parsha_df[column] = ""
 
-    # Select relevant columns and concatenate DataFrames
-    combined_df = pd.concat([
-        top_verses_df[['Book', 'Parsha', 'Text', 'Incorrect Answers', 'Source', 'Summary', 'Summary Incorrect Answers', 'Source Ref']],
-        top_rashis_df[['Book', 'Parsha', 'Text', 'Incorrect Answers', 'Source', 'Summary', 'Summary Incorrect Answers', 'Source Ref']],
-        torah_df[['Book', 'Parsha', 'Text', 'Incorrect Answers', 'Source', 'Summary', 'Summary Incorrect Answers', 'Source Ref']],
-        sefer_hachinuch_df[['Book', 'Parsha', 'Text', 'Incorrect Answers', 'Source', 'Summary', 'Summary Incorrect Answers', 'Source Ref']],
-        kitzur_related_df[['Book', 'Parsha', 'Text', 'Incorrect Answers', 'Source', 'Summary', 'Summary Incorrect Answers', 'Source Ref']]
-    ], ignore_index=True)
-
-    st.session_state.questions_df = combined_df.copy()  # Preload the entire combined DataFrame
+    st.session_state.questions_df = parsha_df.copy()  # Preload the entire DataFrame
 
     # Filter questions based on source filters, including the current question
     if st.session_state.question:
-        current_question_row = combined_df[combined_df['Text'] == st.session_state.question]
-        filtered_df = combined_df[combined_df['Source'].apply(lambda x: st.session_state.source_filters.get(x, True))]
+        current_question_row = parsha_df[parsha_df['text'] == st.session_state.question]
+        filtered_df = parsha_df[parsha_df['source'].apply(lambda x: st.session_state.source_filters.get(x, True))]
         filtered_df = pd.concat([filtered_df, current_question_row]).drop_duplicates().reset_index(drop=True)
     else:
-        filtered_df = combined_df[combined_df['Source'].apply(lambda x: st.session_state.source_filters.get(x, True))]
+        filtered_df = parsha_df[parsha_df['source'].apply(lambda x: st.session_state.source_filters.get(x, True))]
 
     st.session_state.questions_df = filtered_df.copy()  # Update the session state with the filtered DataFrame
 
@@ -141,15 +129,19 @@ def parsha_tab(st, calendar_df, torah_dict, torah_df, date_option, sefer_hachinu
         st.write(st.session_state.question)
         st.session_state.selected_option = st.radio("Choose an option:", st.session_state.options, key="radio_option")
 
-        if st.button("Submit", key="submit"):
+        # Display the "Submit Answer" button
+        if st.button("Submit Answer"):
             st.session_state.answered = True
             st.session_state.total_questions += 1
             if st.session_state.selected_option == st.session_state.correct_answer:
                 st.session_state.correct_answers += 1
                 st.success("Correct!")
+                save_score(st.session_state.username, "Parsha", 1)
             else:
                 st.error(f"Incorrect! The correct answer is: {st.session_state.correct_answer}")
+                save_score(st.session_state.username, "Parsha", 0)
 
+        # Display the "Next Question" button if the answer was submitted
         if st.session_state.answered and st.button("Next Question", key="next"):
             st.session_state.question = None
             st.session_state.options = None
@@ -159,10 +151,6 @@ def parsha_tab(st, calendar_df, torah_dict, torah_df, date_option, sefer_hachinu
             st.rerun()
     else:
         st.write("No more questions available.")
-
-    # Display the combined questions DataFrame at the bottom
-    #st.write("### Combined Questions DataFrame")
-    #st.dataframe(st.session_state.questions_df)
 
     # Display expanders for each option if the question comes from Rashi or Kitzur
     if st.session_state.options and st.session_state.question_source in ["Rashi", "Halachot"]:
