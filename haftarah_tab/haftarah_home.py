@@ -48,6 +48,30 @@ def haftarah_tab(st, calendar_df, date_option, haftarah_path):
         st.session_state.selected_book = None
     if 'selected_parsha' not in st.session_state:
         st.session_state.selected_parsha = None
+    if 'source_filters' not in st.session_state:
+        st.session_state.source_filters = {
+            'Haftarah Topics': True,
+            'Rashi': True,
+            'Pasukim': True,
+            'Kitzur': True
+        }
+
+    # Checkbox filters for each source category
+    with st.expander("Filter by Source"):
+        cols = st.columns(len(st.session_state.source_filters))
+        for i, (source, value) in enumerate(st.session_state.source_filters.items()):
+            with cols[i]:
+                st.session_state.source_filters[source] = st.checkbox(source, value=value)
+        if st.button("Apply Filters"):
+            st.session_state.question_bank = []  # Reset the question bank
+            st.session_state.correct_answers = 0
+            st.session_state.total_questions = 0
+            st.session_state.current_question_index = 0
+            st.session_state.current_question = None
+            st.session_state.options = []
+            st.session_state.correct_answer = None
+            st.session_state.show_next = False
+            st.rerun()
 
     # Get the selected date from session state
     selected_date = st.session_state.selected_date
@@ -136,6 +160,9 @@ def haftarah_tab(st, calendar_df, date_option, haftarah_path):
 
         # Filter the haftarah_path DataFrame for the selected Haftarah
         filtered_haftarah_df = haftarah_path[haftarah_path['haftarah'] == haftarah_value]
+
+        # Apply source filters to the filtered DataFrame
+        filtered_haftarah_df = filtered_haftarah_df[filtered_haftarah_df['source file'].isin([k for k, v in st.session_state.source_filters.items() if v])]
 
         # Reset and generate the question bank when a new selection is made
         if st.session_state.selected_date != selected_date or st.session_state.selected_option != option or st.session_state.selected_book != selected_book or st.session_state.selected_parsha != selected_parsha:

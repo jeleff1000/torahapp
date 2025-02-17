@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import random
 from .parsha_questions import generate_combined_question
 from datetime import datetime
 import os
@@ -55,12 +56,21 @@ def parsha_tab(st, calendar_df, date_option, parsha_path):
         st.session_state.selected_date = date_option
     if 'source_filters' not in st.session_state:
         st.session_state.source_filters = {
-            'Quotes': True,
+            'Hachinuch': True,
+            'Kitzur': True,
+            'Pasukim': True,
             'Rashi': True,
-            'Topics': True,
-            'Mitzvot': True,
-            'Halachot': True
+            'Shulchan Arukh': True,
+            'Topics': True
         }
+    if 'current_question_index' not in st.session_state:
+        st.session_state.current_question_index = 0
+    if 'question_bank' not in st.session_state:
+        st.session_state.question_bank = []
+    if 'selected_book' not in st.session_state:
+        st.session_state.selected_book = None
+    if 'question_source' not in st.session_state:
+        st.session_state.question_source = None
 
     # Reset question bank if date option changes
     if 'previous_date_option' not in st.session_state:
@@ -75,23 +85,33 @@ def parsha_tab(st, calendar_df, date_option, parsha_path):
         st.session_state.questions_df = pd.DataFrame()
         st.session_state.total_questions = 0
         st.session_state.correct_answers = 0
-
-    # Checkbox filters for each source category
-    with st.expander("Filter by Source"):
-        cols = st.columns(len(st.session_state.source_filters))
-        for i, (source, value) in enumerate(st.session_state.source_filters.items()):
-            with cols[i]:
-                st.session_state.source_filters[source] = st.checkbox(source, value=value)
-        if st.button("Apply Filters"):
-            st.session_state.question = None  # Reset the current question
-            st.rerun()
+        st.session_state.current_question_index = 0
+        st.session_state.question_bank = []
+        st.session_state.selected_book = None
 
     if date_option == "All Dates":
         # Allow user to select any book and parsha
         books = parsha_df['book'].unique()
-        selected_book = st.selectbox("Select a Book", books)
-        parshas = parsha_df[parsha_df['book'] == selected_book]['parsha'].unique()
-        selected_parsha = st.selectbox("Select a Parsha", parshas)
+        parshas = parsha_df[parsha_df['book'] == books[0]]['parsha'].unique()
+        cols = st.columns(2)
+        with cols[0]:
+            selected_book = st.selectbox("Select a Book", books)
+        with cols[1]:
+            selected_parsha = st.selectbox("Select a Parsha", parshas)
+
+        # Reset question bank if a new book or parsha is selected
+        if st.session_state.selected_book != selected_book or st.session_state.selected_parsha != selected_parsha:
+            st.session_state.question_bank = []
+            st.session_state.correct_answers = 0
+            st.session_state.total_questions = 0
+            st.session_state.current_question_index = 0
+            st.session_state.selected_book = selected_book
+            st.session_state.selected_parsha = selected_parsha
+            st.session_state.question = None
+            st.session_state.options = None
+            st.session_state.correct_answer = None
+            st.session_state.answered = False
+            st.session_state.selected_option = None
     else:
         # Extract the Parsha for the given date
         selected_date = st.session_state.selected_date
@@ -108,14 +128,33 @@ def parsha_tab(st, calendar_df, date_option, parsha_path):
         selected_book = parsha_df[parsha_df['parsha'] == selected_parsha]['book'].iloc[0]
         st.session_state.selected_parsha = selected_parsha
 
-        # Add dropdowns for selecting book and parsha
-        books = parsha_df['book'].unique()
-        selected_book = st.selectbox("Select a Book", books, index=list(books).index(selected_book))
-        parshas = parsha_df[parsha_df['book'] == selected_book]['parsha'].unique()
-        selected_parsha = st.selectbox("Select a Parsha", parshas, index=list(parshas).index(selected_parsha))
+        # Display the selected book and parsha in select boxes with only one option
+        cols = st.columns(2)
+        with cols[0]:
+            st.selectbox("Select a Book", [selected_book], index=0)
+        with cols[1]:
+            st.selectbox("Select a Parsha", [selected_parsha], index=0)
 
-    # Filter DataFrame to match the selected parsha
-    parsha_df = parsha_df[parsha_df['parsha'] == selected_parsha]
+    # Checkbox filters for each source category
+    with st.expander("Filter by Source"):
+        cols = st.columns(len(st.session_state.source_filters))
+        for i, (source, value) in enumerate(st.session_state.source_filters.items()):
+            with cols[i]:
+                st.session_state.source_filters[source] = st.checkbox(source, value=value)
+        if st.button("Apply Filters"):
+            st.session_state.question_bank = []  # Reset the question bank
+            st.session_state.correct_answers = 0
+            st.session_state.total_questions = 0
+            st.session_state.current_question_index = 0
+            st.session_state.question = None
+            st.session_state.options = None
+            st.session_state.correct_answer = None
+            st.session_state.answered = False
+            st.session_state.selected_option = None
+            st.rerun()
+
+    # Filter DataFrame to match the selected parsha and source filters
+    parsha_df = parsha_df[(parsha_df['parsha'] == selected_parsha) & (parsha_df['source file'].isin([k for k, v in st.session_state.source_filters.items() if v]))]
 
     # Preprocess DataFrame to ensure all elements are strings
     parsha_df = preprocess_df(parsha_df)
@@ -133,37 +172,61 @@ def parsha_tab(st, calendar_df, date_option, parsha_path):
 
     st.session_state.questions_df = parsha_df.copy()  # Preload the entire DataFrame
 
-    # Filter questions based on source filters, including the current question
+    # Generate the question bank if not already generated
+    if not st.session_state.question_bank:
+        for _, row in parsha_df.iterrows():
+            correct_answer = row['text']
+            incorrect_answers = row['incorrect answers'].split('\n- ')
+            incorrect_answers = [ans.strip() for ans in incorrect_answers if ans.strip()]
+            options = random.sample(incorrect_answers, min(3, len(incorrect_answers))) + [correct_answer]
+            random.shuffle(options)
+            source = row['source file']
+            if source == "Quotes":
+                question = f"Which text is from {row['parsha']}?"
+            elif source == "Rashi":
+                question = f"What does Rashi say about {row['parsha']}?"
+            elif source == "Topics":
+                question = f"What topic applies to {row['parsha']}?"
+            elif source == "Hachinuch":
+                question = f"Which Mitzvah is from {row['parsha']}?"
+            elif source == "Shulchan Arukh":
+                question = f"Which Halacha comes from {row['parsha']}?"
+            elif source == "Pasukim":
+                question = f"What verse is from {row['parsha']}?"
+            elif source == "Tanakh Topics":
+                question = f"What topic applies to {row['parsha']}?"
+            elif source == "Kitzur":
+                question = f"What Halacha comes from {row['parsha']}?"
+            else:
+                question = f"Which text is from {row['parsha']} according to {source}?"
+            st.session_state.question_bank.append((question, options, correct_answer))
+            st.session_state.question_source = source
+
+        st.session_state.total_questions = len(st.session_state.question_bank)
+        random.shuffle(st.session_state.question_bank)  # Shuffle the question bank
+
+    # Check if all questions are answered
+    if st.session_state.current_question_index >= st.session_state.total_questions:
+        st.write(f"Congratulations! You have answered all the questions for {selected_parsha}.")
+        st.write(f"Score: {st.session_state.correct_answers}/{st.session_state.total_questions}")
+        percentage_correct = (
+            st.session_state.correct_answers / st.session_state.total_questions) * 100 if st.session_state.total_questions > 0 else 0
+        st.write(f"Percentage Correct: {percentage_correct:.2f}%")
+        return
+
+    # Display the first question from the question bank
+    if st.session_state.question_bank and st.session_state.question is None:
+        st.session_state.current_question_index += 1
+        st.session_state.question, st.session_state.options, st.session_state.correct_answer = st.session_state.question_bank.pop(0)
+
     if st.session_state.question:
-        current_question_row = parsha_df[parsha_df['text'] == st.session_state.question]
-        filtered_df = parsha_df[parsha_df['source'].apply(lambda x: st.session_state.source_filters.get(x, True))]
-        filtered_df = pd.concat([filtered_df, current_question_row]).drop_duplicates().reset_index(drop=True)
-    else:
-        filtered_df = parsha_df[parsha_df['source'].apply(lambda x: st.session_state.source_filters.get(x, True))]
-
-    st.session_state.questions_df = filtered_df.copy()  # Update the session state with the filtered DataFrame
-
-    if st.session_state.selected_parsha != selected_parsha:
-        st.session_state.selected_parsha = selected_parsha
-        st.session_state.question = None
-        st.session_state.options = None
-        st.session_state.correct_answer = None
-        st.session_state.answered = False
-        st.session_state.selected_option = None
-
-    if st.session_state.question is None:
-        result = generate_combined_question()
-        if result[0]:
-            st.session_state.question, st.session_state.options, st.session_state.correct_answer, st.session_state.question_source, some_value, parsha, text, incorrect_answers, option_details = result
-
-    if st.session_state.question:
+        st.write(f"Question {st.session_state.current_question_index}/{st.session_state.total_questions}")
         st.write(st.session_state.question)
         st.session_state.selected_option = st.radio("Choose an option:", st.session_state.options, key="radio_option")
 
         # Display the "Submit Answer" button
         if st.button("Submit Answer"):
             st.session_state.answered = True
-            st.session_state.total_questions += 1
             if st.session_state.selected_option == st.session_state.correct_answer:
                 st.session_state.correct_answers += 1
                 st.success("Correct!")
@@ -182,6 +245,13 @@ def parsha_tab(st, calendar_df, date_option, parsha_path):
             st.rerun()
     else:
         st.write("No more questions available.")
+
+    # Update the progress bar based on questions correct out of questions answered
+    progress = st.session_state.correct_answers / st.session_state.current_question_index if st.session_state.current_question_index > 0 else 0
+    st.progress(progress)
+
+    # Display the score at the bottom
+    st.write(f"Score: {st.session_state.correct_answers}/{st.session_state.current_question_index}")
 
     # Display expanders for each option if the question comes from Rashi or Kitzur
     if st.session_state.options and st.session_state.question_source in ["Rashi", "Halachot"]:

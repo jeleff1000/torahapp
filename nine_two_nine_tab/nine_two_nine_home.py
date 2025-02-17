@@ -47,6 +47,30 @@ def nine_two_nine_tab(st, calendar_df, nine_two_nine_df, date_option):
         st.session_state.selected_book = None
     if 'selected_chapter' not in st.session_state:
         st.session_state.selected_chapter = None
+    if 'source_filters' not in st.session_state:
+        st.session_state.source_filters = {
+            'Rashi': True,
+            'Pasukim': True,
+            'Tanakh Topics': True,
+            'Kitzur': True
+        }
+
+    # Checkbox filters for each source category
+    with st.expander("Filter by Source"):
+        cols = st.columns(len(st.session_state.source_filters))
+        for i, (source, value) in enumerate(st.session_state.source_filters.items()):
+            with cols[i]:
+                st.session_state.source_filters[source] = st.checkbox(source, value=value)
+        if st.button("Apply Filters"):
+            st.session_state.question_bank = []  # Reset the question bank
+            st.session_state.correct_answers = 0
+            st.session_state.total_questions = 0
+            st.session_state.current_question_index = 0
+            st.session_state.current_question = None
+            st.session_state.options = []
+            st.session_state.correct_answer = None
+            st.session_state.show_next = False
+            st.rerun()
 
     # Check if calendar_df is not empty and contains 'Date' column
     if calendar_df.empty or 'Date' not in calendar_df.columns:
@@ -129,6 +153,9 @@ def nine_two_nine_tab(st, calendar_df, nine_two_nine_df, date_option):
     # Filter the 929 DataFrame to only include rows where book and chapter match
     filtered_nine_two_nine_df = nine_two_nine_df[
         (nine_two_nine_df['book'] == selected_book) & (nine_two_nine_df['chapter'] == selected_chapter_int)]
+
+    # Apply source filters to the filtered DataFrame
+    filtered_nine_two_nine_df = filtered_nine_two_nine_df[filtered_nine_two_nine_df['source file'].isin([k for k, v in st.session_state.source_filters.items() if v])]
 
     # Remove duplicate rows based on the 'text' column
     filtered_nine_two_nine_df = filtered_nine_two_nine_df.drop_duplicates(subset=['text'])

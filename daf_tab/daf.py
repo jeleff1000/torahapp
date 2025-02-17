@@ -48,11 +48,11 @@ def daf_yomi_tab(st, calendar_df, daf_yomi_df, seder_tractates, daf_ranges, date
         st.session_state.current_question_index = 0
     if 'source_filters' not in st.session_state:
         st.session_state.source_filters = {
-            'Quotes': True,
-            'Rashi': True,
-            'Topics': True,
-            'Mitzvot': True,
-            'Halachot': True
+            'Talmud Topics': True,
+            'Indexed Ref Data': True,
+            'Kitzur': True,
+            'Shulchan Arukh': True,
+            'Rashi': True
         }
 
     # Checkbox filters for each source category
@@ -62,7 +62,14 @@ def daf_yomi_tab(st, calendar_df, daf_yomi_df, seder_tractates, daf_ranges, date
             with cols[i]:
                 st.session_state.source_filters[source] = st.checkbox(source, value=value)
         if st.button("Apply Filters"):
-            st.session_state.question = None  # Reset the current question
+            st.session_state.question_bank = []  # Reset the question bank
+            st.session_state.correct_answers = 0
+            st.session_state.total_questions = 0
+            st.session_state.current_question_index = 0
+            st.session_state.current_question = None
+            st.session_state.options = []
+            st.session_state.correct_answer = None
+            st.session_state.show_next = False
             st.rerun()
 
     # Check if calendar_df is not empty and contains 'Date' column
@@ -133,6 +140,9 @@ def daf_yomi_tab(st, calendar_df, daf_yomi_df, seder_tractates, daf_ranges, date
     else:
         st.error("The 'daf' column is missing in daf_yomi_df.")
         return
+
+    # Apply source filters to the filtered DataFrame
+    filtered_daf_yomi_df = filtered_daf_yomi_df[filtered_daf_yomi_df['source file'].isin([k for k, v in st.session_state.source_filters.items() if v])]
 
     # Generate the question bank when a Daf is selected, if not already generated
     if not st.session_state.question_bank:
