@@ -62,6 +62,20 @@ def parsha_tab(st, calendar_df, date_option, parsha_path):
             'Halachot': True
         }
 
+    # Reset question bank if date option changes
+    if 'previous_date_option' not in st.session_state:
+        st.session_state.previous_date_option = date_option
+    if st.session_state.previous_date_option != date_option:
+        st.session_state.previous_date_option = date_option
+        st.session_state.question = None
+        st.session_state.options = None
+        st.session_state.correct_answer = None
+        st.session_state.answered = False
+        st.session_state.selected_option = None
+        st.session_state.questions_df = pd.DataFrame()
+        st.session_state.total_questions = 0
+        st.session_state.correct_answers = 0
+
     # Checkbox filters for each source category
     with st.expander("Filter by Source"):
         cols = st.columns(len(st.session_state.source_filters))
@@ -72,16 +86,33 @@ def parsha_tab(st, calendar_df, date_option, parsha_path):
             st.session_state.question = None  # Reset the current question
             st.rerun()
 
-    # Extract the Parsha for the given date
-    selected_date = st.session_state.selected_date
-    selected_row = calendar_df[(calendar_df['Date'] == selected_date) & (calendar_df['Title (en)'] == 'Parashat Hashavua')]
-    if not selected_row.empty:
-        selected_parsha = selected_row.iloc[0]['Display Value (en)']
+    if date_option == "All Dates":
+        # Allow user to select any book and parsha
+        books = parsha_df['book'].unique()
+        selected_book = st.selectbox("Select a Book", books)
+        parshas = parsha_df[parsha_df['book'] == selected_book]['parsha'].unique()
+        selected_parsha = st.selectbox("Select a Parsha", parshas)
     else:
-        st.write(f"No data available for the selected date: {selected_date}")
-        st.write("Available dates in calendar_df:")
-        st.write(calendar_df['Date'].unique())
-        return
+        # Extract the Parsha for the given date
+        selected_date = st.session_state.selected_date
+        selected_row = calendar_df[(calendar_df['Date'] == selected_date) & (calendar_df['Title (en)'] == 'Parashat Hashavua')]
+        if not selected_row.empty:
+            selected_parsha = selected_row.iloc[0]['Display Value (en)']
+        else:
+            st.write(f"No data available for the selected date: {selected_date}")
+            st.write("Available dates in calendar_df:")
+            st.write(calendar_df['Date'].unique())
+            return
+
+        # Automatically select the book and parsha based on the selected_parsha
+        selected_book = parsha_df[parsha_df['parsha'] == selected_parsha]['book'].iloc[0]
+        st.session_state.selected_parsha = selected_parsha
+
+        # Add dropdowns for selecting book and parsha
+        books = parsha_df['book'].unique()
+        selected_book = st.selectbox("Select a Book", books, index=list(books).index(selected_book))
+        parshas = parsha_df[parsha_df['book'] == selected_book]['parsha'].unique()
+        selected_parsha = st.selectbox("Select a Parsha", parshas, index=list(parshas).index(selected_parsha))
 
     # Filter DataFrame to match the selected parsha
     parsha_df = parsha_df[parsha_df['parsha'] == selected_parsha]

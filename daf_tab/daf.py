@@ -106,6 +106,22 @@ def daf_yomi_tab(st, calendar_df, daf_yomi_df, seder_tractates, daf_ranges, date
             daf_list = [f"{selected_tractate} {daf}" for daf in daf_ranges[selected_tractate]]
         selected_daf = st.selectbox("Select a Daf", daf_list, key="daf_talmud")
 
+    # Reset question bank if a new seder, tractate, or daf is selected
+    if (st.session_state.selected_seder != selected_seder or
+        st.session_state.selected_tractate != selected_tractate or
+        st.session_state.selected_daf != selected_daf):
+        st.session_state.selected_seder = selected_seder
+        st.session_state.selected_tractate = selected_tractate
+        st.session_state.selected_daf = selected_daf
+        st.session_state.question_bank = []
+        st.session_state.current_question_index = 0
+        st.session_state.correct_answers = 0
+        st.session_state.total_questions = 0
+        st.session_state.show_next = False
+        st.session_state.current_question = None
+        st.session_state.options = []
+        st.session_state.correct_answer = None
+
     # Ensure daf_yomi_df is a DataFrame
     if not isinstance(daf_yomi_df, pd.DataFrame):
         st.error("daf_yomi_df is not a DataFrame.")
