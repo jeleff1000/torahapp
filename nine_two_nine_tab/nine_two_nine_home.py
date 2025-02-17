@@ -141,7 +141,17 @@ def nine_two_nine_tab(st, calendar_df, nine_two_nine_df, date_option):
             incorrect_answers = [ans.strip() for ans in incorrect_answers if ans.strip()]
             options = random.sample(incorrect_answers, min(3, len(incorrect_answers))) + [correct_answer]
             random.shuffle(options)
-            question = f"What is the content of {selected_book} {selected_chapter}?"
+            source = row['source file']  # Assuming there is a 'source file' column in the DataFrame
+            if source == "Rashi":
+                question = f"What does Rashi say about {selected_book} {selected_chapter}?"
+            elif source == "Pasukim":
+                question = f"What verse is from {selected_book} {selected_chapter}?"
+            elif source == "Tanakh Topics":
+                question = f"What topic applies to {selected_book} {selected_chapter}?"
+            elif source == "Kitzur":
+                question = f"What Halacha comes from {selected_book} {selected_chapter}?"
+            else:
+                question = f"What is the content of {selected_book} {selected_chapter}?"
             st.session_state.question_bank.append((question, options, correct_answer))
 
         st.session_state.total_questions = len(st.session_state.question_bank)

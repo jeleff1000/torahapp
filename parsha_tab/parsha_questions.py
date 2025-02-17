@@ -29,21 +29,27 @@ def generate_combined_question():
     options = random.sample(incorrect_answers, min(3, len(incorrect_answers))) + [correct_answer]
     random.shuffle(options)
 
-    # Formulate the question based on the source column
-    source = selected_row['source']
+    # Formulate the question based on the source file column
+    source_file = selected_row['source file']
     parsha = selected_row['parsha']
-    if source == "Quotes":
+    if source_file == "Quotes":
         question = f"Which text is from {parsha}?"
-    elif source == "Rashi":
-        question = f"Which Rashi applies to Parshat {parsha}? (See below for full text)"
-    elif source == "Topics":
-        question = f"Which topic applies to Parshat {parsha}?"
-    elif source == "Mitzvot":
-        question = f"Which commandment is from Parshat {parsha}?"
-    elif source == "Halachot":
-        question = f"Which Halacha comes from Parshat {parsha}? (See below for full text)"
+    elif source_file == "Rashi":
+        question = f"What does Rashi say about {parsha}?"
+    elif source_file == "Topics":
+        question = f"What topic applies to {parsha}?"
+    elif source_file == "Hachinuch":
+        question = f"Which Mitzvah is from {parsha}?"
+    elif source_file == "Shulchan Arukh":
+        question = f"Which Halacha comes from {parsha}?"
+    elif source_file == "Pasukim":
+        question = f"What verse is from {parsha}?"
+    elif source_file == "Tanakh Topics":
+        question = f"What topic applies to {parsha}?"
+    elif source_file == "Kitzur":
+        question = f"What Halacha comes from {parsha}?"
     else:
-        question = f"Which text is from {parsha} according to {source}?"
+        question = f"Which text is from {parsha} according to {source_file}?"
 
     # Mark the selected row as used
     st.session_state.used_questions.add(selected_row.name)
@@ -56,4 +62,4 @@ def generate_combined_question():
         else:
             option_details[option] = ("", "")
 
-    return question, options, correct_answer, selected_row['source'], None, selected_row['parsha'], selected_row['text'], incorrect_answers, option_details
+    return question, options, correct_answer, selected_row['source file'], None, selected_row['parsha'], selected_row['text'], incorrect_answers, option_details

@@ -126,7 +126,17 @@ def daf_yomi_tab(st, calendar_df, daf_yomi_df, seder_tractates, daf_ranges, date
             incorrect_answers = [ans.strip() for ans in incorrect_answers if ans.strip()]
             options = random.sample(incorrect_answers, min(3, len(incorrect_answers))) + [correct_answer]
             random.shuffle(options)
-            question = f"What is the content of Daf {selected_daf}?"
+            source = row['source file']  # Assuming there is a 'source' column in the DataFrame
+            if source == "Talmud Topics":
+                question = f"What topic is discussed in {selected_daf}?"
+            elif source == "Indexed Ref Data":
+                question = f"Which quote is from {selected_daf}?"
+            elif source in ["Kitzur", "Shulchan Arukh"]:
+                question = f"What Halacha comes from {selected_daf}?"
+            elif source == "Rashi":
+                question = f"Which Rashi applies to {selected_daf}?"
+            else:
+                question = f"What is the content of Daf {selected_daf}?"
             st.session_state.question_bank.append((question, options, correct_answer))
 
         st.session_state.total_questions = len(st.session_state.question_bank)
@@ -180,3 +190,6 @@ def daf_yomi_tab(st, calendar_df, daf_yomi_df, seder_tractates, daf_ranges, date
 
     # Display the score at the bottom
     st.write(f"Score: {st.session_state.correct_answers}/{st.session_state.current_question_index}")
+
+    # Display the DataFrame at the bottom
+    st.dataframe(filtered_daf_yomi_df)

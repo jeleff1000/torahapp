@@ -43,9 +43,11 @@ except FileNotFoundError:
 
 try:
     haftarah_df = pd.read_parquet(haftarah_path)
+    if 'haftarah' not in haftarah_df.columns:
+        haftarah_df['haftarah'] = None  # Add the haftarah column if it doesn't exist
 except FileNotFoundError:
     st.error(f"File not found: {haftarah_path}")
-    haftarah_df = pd.DataFrame()
+    haftarah_df = pd.DataFrame(columns=['haftarah'])  # Create an empty DataFrame with the haftarah column
 
 try:
     nine_two_nine_df = pd.read_parquet(nine_two_nine_path)
@@ -169,7 +171,7 @@ elif view == "Yerushalmi":
 elif view == "Mishnah Yomi":
     mishnah_yomi_tab(st, calendar_df, talmud_dict, seder_tractates, daf_ranges, date_option)
 elif view == "Haftarah":
-    haftarah_tab(st, calendar_df, date_option, haftarah_path)
+    haftarah_tab(st, calendar_df, date_option, haftarah_df)
 elif view == "929":
     nine_two_nine_tab(st, calendar_df, nine_two_nine_df, date_option)
 elif view == "Scores":
