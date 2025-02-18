@@ -148,9 +148,14 @@ def daf_yomi_tab(st, calendar_df, daf_yomi_df, seder_tractates, daf_ranges, date
     if not st.session_state.question_bank:
         for _, row in filtered_daf_yomi_df.iterrows():
             correct_answer = row['text']
-            incorrect_answers = row['incorrect answers'].split('\n- ')
-            incorrect_answers = [ans.strip() for ans in incorrect_answers if ans.strip()]
-            options = random.sample(incorrect_answers, min(3, len(incorrect_answers))) + [correct_answer]
+            incorrect_choices = [row[f'incorrect {i}'] for i in range(1, 7) if pd.notna(row[f'incorrect {i}'])]
+            if len(incorrect_choices) >= 3:
+                incorrect_answers = random.sample(incorrect_choices, 3)
+            else:
+                incorrect_answers = row['incorrect answers'].split('\n- ')
+                incorrect_answers = [ans.strip() for ans in incorrect_answers if ans.strip()]
+                incorrect_answers = random.sample(incorrect_answers, min(3, len(incorrect_answers)))
+            options = incorrect_answers + [correct_answer]
             random.shuffle(options)
             source = row['source file']  # Assuming there is a 'source' column in the DataFrame
             if source == "Talmud Topics":

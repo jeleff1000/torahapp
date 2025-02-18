@@ -18,7 +18,7 @@ triu = np.triu
 # Get the directory of the current script
 base_dir = os.path.dirname(__file__)
 
-# Load the data from the parquet files
+# Load the calendar data
 calendar_data_path = os.path.join(base_dir, 'learning_calendar_2024_2025.parquet')
 calendar_df = pd.read_parquet(calendar_data_path)
 
@@ -27,33 +27,6 @@ daf_yomi_path = os.path.join(base_dir, 'merged_daf_yomi_data.parquet')
 parsha_path = os.path.join(base_dir, 'merged_parsha_data.parquet')
 haftarah_path = os.path.join(base_dir, 'merged_haftarah_data.parquet')
 nine_two_nine_path = os.path.join(base_dir, 'merged_929_data.parquet')
-
-# Load the dataframes with error handling
-try:
-    daf_yomi_df = pd.read_parquet(daf_yomi_path)
-except FileNotFoundError:
-    st.error(f"File not found: {daf_yomi_path}")
-    daf_yomi_df = pd.DataFrame()
-
-try:
-    parsha_df = pd.read_parquet(parsha_path)
-except FileNotFoundError:
-    st.error(f"File not found: {parsha_path}")
-    parsha_df = pd.DataFrame()
-
-try:
-    haftarah_df = pd.read_parquet(haftarah_path)
-    if 'haftarah' not in haftarah_df.columns:
-        haftarah_df['haftarah'] = None  # Add the haftarah column if it doesn't exist
-except FileNotFoundError:
-    st.error(f"File not found: {haftarah_path}")
-    haftarah_df = pd.DataFrame(columns=['haftarah'])  # Create an empty DataFrame with the haftarah column
-
-try:
-    nine_two_nine_df = pd.read_parquet(nine_two_nine_path)
-except FileNotFoundError:
-    st.error(f"File not found: {nine_two_nine_path}")
-    nine_two_nine_df = pd.DataFrame()
 
 # Define the Seders and their corresponding tractates
 seder_tractates = {
@@ -163,16 +136,48 @@ if view == "Home":
         if st.button("Register"):
             login_info.register(new_username, new_password)
 elif view == "Daf Yomi":
+    try:
+        daf_yomi_df = pd.read_parquet(daf_yomi_path)
+    except FileNotFoundError:
+        st.error(f"File not found: {daf_yomi_path}")
+        daf_yomi_df = pd.DataFrame()
     daf_yomi_tab(st, calendar_df, daf_yomi_df, seder_tractates, daf_ranges, date_option)
 elif view == "Parsha":
-    parsha_tab(st, calendar_df, date_option, parsha_path)
+    try:
+        parsha_df = pd.read_parquet(parsha_path)
+    except FileNotFoundError:
+        st.error(f"File not found: {parsha_path}")
+        parsha_df = pd.DataFrame()
+    parsha_tab(st, calendar_df, date_option, parsha_df)
 elif view == "Yerushalmi":
-    yerushalmi_tab(st, calendar_df, talmud_dict, seder_tractates, daf_ranges, date_option)
+    try:
+        yerushalmi_df = pd.read_parquet(yerushalmi_path)
+    except FileNotFoundError:
+        st.error(f"File not found: {yerushalmi_path}")
+        yerushalmi_df = pd.DataFrame()
+    yerushalmi_tab(st, calendar_df, yerushalmi_df, seder_tractates, daf_ranges, date_option)
 elif view == "Mishnah Yomi":
-    mishnah_yomi_tab(st, calendar_df, talmud_dict, seder_tractates, daf_ranges, date_option)
+    try:
+        mishnah_yomi_df = pd.read_parquet(mishnah_yomi_path)
+    except FileNotFoundError:
+        st.error(f"File not found: {mishnah_yomi_path}")
+        mishnah_yomi_df = pd.DataFrame()
+    mishnah_yomi_tab(st, calendar_df, mishnah_yomi_df, seder_tractates, daf_ranges, date_option)
 elif view == "Haftarah":
+    try:
+        haftarah_df = pd.read_parquet(haftarah_path)
+        if 'haftarah' not in haftarah_df.columns:
+            haftarah_df['haftarah'] = None  # Add the haftarah column if it doesn't exist
+    except FileNotFoundError:
+        st.error(f"File not found: {haftarah_path}")
+        haftarah_df = pd.DataFrame(columns=['haftarah'])  # Create an empty DataFrame with the haftarah column
     haftarah_tab(st, calendar_df, date_option, haftarah_df)
 elif view == "929":
+    try:
+        nine_two_nine_df = pd.read_parquet(nine_two_nine_path)
+    except FileNotFoundError:
+        st.error(f"File not found: {nine_two_nine_path}")
+        nine_two_nine_df = pd.DataFrame()
     nine_two_nine_tab(st, calendar_df, nine_two_nine_df, date_option)
 elif view == "Scores":
     scores_tab()
