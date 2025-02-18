@@ -143,12 +143,7 @@ elif view == "Daf Yomi":
         daf_yomi_df = pd.DataFrame()
     daf_yomi_tab(st, calendar_df, daf_yomi_df, seder_tractates, daf_ranges, date_option)
 elif view == "Parsha":
-    try:
-        parsha_df = pd.read_parquet(parsha_path)
-    except FileNotFoundError:
-        st.error(f"File not found: {parsha_path}")
-        parsha_df = pd.DataFrame()
-    parsha_tab(st, calendar_df, date_option, parsha_df)
+    parsha_tab(st, calendar_df, date_option, parsha_path)
 elif view == "Yerushalmi":
     try:
         yerushalmi_df = pd.read_parquet(yerushalmi_path)

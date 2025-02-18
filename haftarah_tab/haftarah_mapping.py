@@ -140,7 +140,3 @@ sorted_holiday_readings = {holiday: holiday_readings[holiday] for holiday in hol
 
 # Sort Shabbat readings by book and parsha
 sorted_shabbat_readings = [(book, parsha, haftarah) for book in parshiyot for parsha in parshiyot[book] if book in shabbat_readings and parsha in shabbat_readings[book]]
-
-# Output structure
-print("Shabbat Readings:", sorted_shabbat_readings)
-print("Holiday Readings:", sorted_holiday_readings)

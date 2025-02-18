@@ -30,8 +30,17 @@ def clean_values(df):
 def parsha_tab(st, calendar_df, date_option, parsha_path):
     st.header("Parsha Quiz")
 
+    # Verify the file path and check if the file exists
+    if not os.path.exists(parsha_path):
+        st.error(f"Parsha file not found at path: {parsha_path}")
+        return
+
     # Load the parsha DataFrame
-    parsha_df = pd.read_parquet(parsha_path)
+    try:
+        parsha_df = pd.read_parquet(parsha_path)
+    except Exception as e:
+        st.error(f"Error reading Parsha file: {e}")
+        return
 
     # Initialize session state
     if 'selected_parsha' not in st.session_state:

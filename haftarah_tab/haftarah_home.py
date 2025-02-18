@@ -62,7 +62,7 @@ def haftarah_tab(st, calendar_df, date_option, haftarah_path):
         for i, (source, value) in enumerate(st.session_state.source_filters.items()):
             st.session_state.source_filters[source] = cols[i].checkbox(source, value)
         if st.button("Apply Filters"):
-            st.experimental_rerun()
+            st.rerun()
 
     # Get the selected date from session state
     selected_date = st.session_state.selected_date
@@ -223,7 +223,7 @@ def haftarah_tab(st, calendar_df, date_option, haftarah_path):
                         st.session_state.current_question_index += 1
                         st.session_state.current_question, st.session_state.options, st.session_state.correct_answer = st.session_state.question_bank.pop(
                             0)
-                        st.experimental_rerun()  # Rerun the app to update the state immediately
+                        st.rerun()  # Rerun the app to update the state immediately
                     else:
                         st.write("No more questions available.")
 
