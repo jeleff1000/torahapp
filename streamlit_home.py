@@ -5,8 +5,6 @@ import numpy as np
 from datetime import datetime
 from daf_tab.daf import daf_yomi_tab
 from parsha_tab.parsha_home import parsha_tab
-from yerushalmi_tab.yerushalmi_home import yerushalmi_tab
-from mishnah_yomi_tab.mishnah_yomi_home import mishnah_yomi_tab
 from haftarah_tab.haftarah_home import haftarah_tab
 from nine_two_nine_tab.nine_two_nine_home import nine_two_nine_tab
 from scores_tab.scores_home import scores_tab
@@ -103,7 +101,7 @@ def save_score(username, category, score):
 
 # Sidebar for view selection
 st.sidebar.title("Navigation")
-view = st.sidebar.radio("Select View", ["Home", "Daf Yomi", "Parsha", "Yerushalmi", "929", "Mishnah Yomi", "Haftarah", "Scores"], on_change=reset_session_state)
+view = st.sidebar.radio("Select View", ["Home", "Daf Yomi", "Parsha", "929", "Haftarah", "Scores"], on_change=reset_session_state)
 
 # Columns for date input and radio button
 col1, col2 = st.columns([2, 1])
@@ -122,7 +120,7 @@ if view == "Home":
     if st.session_state.logged_in:
         st.write(f"Welcome {st.session_state.username}!")
     else:
-        st.write("Welcome to the Daily Torah Quiz! Use the sidebar to navigate to Daf Yomi, Parsha, Yerushalmi, 929, Mishnah Yomi, or Haftarah quizzes.")
+        st.write("Welcome to the Daily Torah Quiz! Use the sidebar to navigate to Daf Yomi, Parsha, 929, or Haftarah quizzes.")
         st.write("Login or create a username below:")
         username = st.text_input("Username")
         password = st.text_input("Password", type="password")
@@ -144,20 +142,6 @@ elif view == "Daf Yomi":
     daf_yomi_tab(st, calendar_df, daf_yomi_df, seder_tractates, daf_ranges, date_option)
 elif view == "Parsha":
     parsha_tab(st, calendar_df, date_option, parsha_path)
-elif view == "Yerushalmi":
-    try:
-        yerushalmi_df = pd.read_parquet(yerushalmi_path)
-    except FileNotFoundError:
-        st.error(f"File not found: {yerushalmi_path}")
-        yerushalmi_df = pd.DataFrame()
-    yerushalmi_tab(st, calendar_df, yerushalmi_df, seder_tractates, daf_ranges, date_option)
-elif view == "Mishnah Yomi":
-    try:
-        mishnah_yomi_df = pd.read_parquet(mishnah_yomi_path)
-    except FileNotFoundError:
-        st.error(f"File not found: {mishnah_yomi_path}")
-        mishnah_yomi_df = pd.DataFrame()
-    mishnah_yomi_tab(st, calendar_df, mishnah_yomi_df, seder_tractates, daf_ranges, date_option)
 elif view == "Haftarah":
     try:
         haftarah_df = pd.read_parquet(haftarah_path)

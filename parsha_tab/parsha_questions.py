@@ -34,8 +34,8 @@ def generate_combined_question():
     parsha = selected_row['parsha']
     if source_file == "Quotes":
         question = f"Which text is from {parsha}?"
-    elif source_file == "Rashi":
-        question = f"What does Rashi say about {parsha}?"
+    elif source_file in ["Rashi", "Ibn Ezra", "Radak", "Ramban"]:
+        question = f"What does {source_file} say about {parsha}?"
     elif source_file == "Topics":
         question = f"What topic applies to {parsha}?"
     elif source_file == "Hachinuch":

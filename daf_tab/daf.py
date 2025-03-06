@@ -147,14 +147,19 @@ def daf_yomi_tab(st, calendar_df, daf_yomi_df, seder_tractates, daf_ranges, date
     # Generate the question bank when a Daf is selected, if not already generated
     if not st.session_state.question_bank:
         for _, row in filtered_daf_yomi_df.iterrows():
-            correct_answer = row['text']
-            incorrect_choices = [row[f'incorrect {i}'] for i in range(1, 7) if pd.notna(row[f'incorrect {i}'])]
-            if len(incorrect_choices) >= 3:
-                incorrect_answers = random.sample(incorrect_choices, 3)
+            if row['source file'] == "Shulchan Arukh":
+                correct_answer = row['summary']
+                incorrect_choices = [row[f'summary incorrect {i}'] for i in range(1, 7) if pd.notna(row[f'summary incorrect {i}'])]
+                incorrect_answers = random.sample(incorrect_choices, min(3, len(incorrect_choices)))
             else:
-                incorrect_answers = row['incorrect answers'].split('\n- ')
-                incorrect_answers = [ans.strip() for ans in incorrect_answers if ans.strip()]
-                incorrect_answers = random.sample(incorrect_answers, min(3, len(incorrect_answers)))
+                correct_answer = row['text']
+                incorrect_choices = [row[f'incorrect {i}'] for i in range(1, 7) if pd.notna(row[f'incorrect {i}'])]
+                if len(incorrect_choices) >= 3:
+                    incorrect_answers = random.sample(incorrect_choices, 3)
+                else:
+                    incorrect_answers = row['incorrect answers'].split('\n- ')
+                    incorrect_answers = [ans.strip() for ans in incorrect_answers if ans.strip()]
+                    incorrect_answers = random.sample(incorrect_answers, min(3, len(incorrect_answers)))
             options = incorrect_answers + [correct_answer]
             random.shuffle(options)
             source = row['source file']  # Assuming there is a 'source' column in the DataFrame
@@ -168,7 +173,7 @@ def daf_yomi_tab(st, calendar_df, daf_yomi_df, seder_tractates, daf_ranges, date
                 question = f"Which Rashi applies to {selected_daf}?"
             else:
                 question = f"What is the content of Daf {selected_daf}?"
-            st.session_state.question_bank.append((question, options, correct_answer))
+            st.session_state.question_bank.append((question, options, correct_answer, row))
 
         st.session_state.total_questions = len(st.session_state.question_bank)
         random.shuffle(st.session_state.question_bank)  # Shuffle the question bank
@@ -184,7 +189,7 @@ def daf_yomi_tab(st, calendar_df, daf_yomi_df, seder_tractates, daf_ranges, date
     # Display the first question from the question bank
     if st.session_state.question_bank and st.session_state.current_question is None:
         st.session_state.current_question_index += 1
-        st.session_state.current_question, st.session_state.options, st.session_state.correct_answer = st.session_state.question_bank.pop(0)
+        st.session_state.current_question, st.session_state.options, st.session_state.correct_answer, st.session_state.current_row = st.session_state.question_bank.pop(0)
 
     if st.session_state.current_question:
         st.write(f"Question {st.session_state.current_question_index}/{st.session_state.total_questions}")
@@ -210,10 +215,20 @@ def daf_yomi_tab(st, calendar_df, daf_yomi_df, seder_tractates, daf_ranges, date
                 st.session_state.current_question = None
                 if st.session_state.question_bank:
                     st.session_state.current_question_index += 1
-                    st.session_state.current_question, st.session_state.options, st.session_state.correct_answer = st.session_state.question_bank.pop(0)
+                    st.session_state.current_question, st.session_state.options, st.session_state.correct_answer, st.session_state.current_row = st.session_state.question_bank.pop(0)
                     st.rerun()  # Rerun the app to update the state immediately
                 else:
                     st.write("No more questions available.")
+
+        # Display expanders for each choice if the source file is "Shulchan Arukh"
+        if st.session_state.current_row['source file'] == "Shulchan Arukh":
+            for i, option in enumerate(st.session_state.options):
+                with st.expander(f"Choice {chr(65 + i)}"):
+                    if option == st.session_state.correct_answer:
+                        st.write(f"**{st.session_state.current_row['source ref']}**: {st.session_state.current_row['text']}")
+                    else:
+                        incorrect_index = st.session_state.options.index(option) + 1
+                        st.write(f"**{st.session_state.current_row[f'incorrect source ref {incorrect_index}']}**: {option}")
 
     # Update the progress bar based on questions correct out of questions answered
     progress = st.session_state.correct_answers / st.session_state.current_question_index if st.session_state.current_question_index > 0 else 0
@@ -223,4 +238,4 @@ def daf_yomi_tab(st, calendar_df, daf_yomi_df, seder_tractates, daf_ranges, date
     st.write(f"Score: {st.session_state.correct_answers}/{st.session_state.current_question_index}")
 
     # Display the DataFrame at the bottom
-    st.dataframe(filtered_daf_yomi_df)
+    #st.dataframe(filtered_daf_yomi_df)

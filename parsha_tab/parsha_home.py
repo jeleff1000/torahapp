@@ -70,7 +70,10 @@ def parsha_tab(st, calendar_df, date_option, parsha_path):
             'Pasukim': True,
             'Rashi': True,
             'Shulchan Arukh': True,
-            'Topics': True
+            'Topics': True,
+            'Ibn Ezra': True,
+            'Radak': True,
+            'Ramban': True
         }
     if 'current_question_index' not in st.session_state:
         st.session_state.current_question_index = 0
@@ -146,9 +149,9 @@ def parsha_tab(st, calendar_df, date_option, parsha_path):
 
     # Checkbox filters for each source category
     with st.expander("Filter by Source"):
-        cols = st.columns(len(st.session_state.source_filters))
+        cols = st.columns(5)
         for i, (source, value) in enumerate(st.session_state.source_filters.items()):
-            with cols[i]:
+            with cols[i % 5]:
                 st.session_state.source_filters[source] = st.checkbox(source, value=value)
         if st.button("Apply Filters"):
             st.session_state.question_bank = []  # Reset the question bank
@@ -184,16 +187,25 @@ def parsha_tab(st, calendar_df, date_option, parsha_path):
     # Generate the question bank if not already generated
     if not st.session_state.question_bank:
         for _, row in parsha_df.iterrows():
-            correct_answer = row['text']
-            incorrect_answers = row['incorrect answers'].split('\n- ')
-            incorrect_answers = [ans.strip() for ans in incorrect_answers if ans.strip()]
-            options = random.sample(incorrect_answers, min(3, len(incorrect_answers))) + [correct_answer]
+            correct_answer = row['summary'] if row['source file'] in ["Rashi", "Ibn Ezra", "Radak"] else row['text']
+            if row['source file'] in ["Topics", "Hachinuch", "Pasukim"]:
+                incorrect_answers = row['incorrect answers'].split('\n- ')
+                incorrect_answers = [ans.strip() for ans in incorrect_answers if ans.strip()]
+                incorrect_answers = random.sample(incorrect_answers, min(3, len(incorrect_answers)))
+            elif row['source file'] in ["Rashi", "Ibn Ezra", "Radak"]:
+                incorrect_answers = [row[f'summary incorrect {i}'] for i in range(1, 7) if row[f'summary incorrect {i}']]
+                incorrect_answers = random.sample(incorrect_answers, min(3, len(incorrect_answers)))
+            else:
+                incorrect_answers = row['incorrect answers'].split('\n- ') if row['incorrect answers'] else []
+                incorrect_answers = [ans.strip() for ans in incorrect_answers if ans.strip()]
+            options = incorrect_answers + [correct_answer]
+            options = options[:4]  # Ensure there are at most 4 options
             random.shuffle(options)
             source = row['source file']
             if source == "Quotes":
                 question = f"Which text is from {row['parsha']}?"
-            elif source == "Rashi":
-                question = f"What does Rashi say about {row['parsha']}?"
+            elif source in ["Rashi", "Ibn Ezra", "Radak", "Ramban"]:
+                question = f"What does {source} say about {row['parsha']}?"
             elif source == "Topics":
                 question = f"What topic applies to {row['parsha']}?"
             elif source == "Hachinuch":
@@ -208,7 +220,7 @@ def parsha_tab(st, calendar_df, date_option, parsha_path):
                 question = f"What Halacha comes from {row['parsha']}?"
             else:
                 question = f"Which text is from {row['parsha']} according to {source}?"
-            st.session_state.question_bank.append((question, options, correct_answer))
+            st.session_state.question_bank.append((question, options, correct_answer, row))
             st.session_state.question_source = source
 
         st.session_state.total_questions = len(st.session_state.question_bank)
@@ -226,7 +238,7 @@ def parsha_tab(st, calendar_df, date_option, parsha_path):
     # Display the first question from the question bank
     if st.session_state.question_bank and st.session_state.question is None:
         st.session_state.current_question_index += 1
-        st.session_state.question, st.session_state.options, st.session_state.correct_answer = st.session_state.question_bank.pop(0)
+        st.session_state.question, st.session_state.options, st.session_state.correct_answer, st.session_state.current_row = st.session_state.question_bank.pop(0)
 
     if st.session_state.question:
         st.write(f"Question {st.session_state.current_question_index}/{st.session_state.total_questions}")
@@ -261,10 +273,3 @@ def parsha_tab(st, calendar_df, date_option, parsha_path):
 
     # Display the score at the bottom
     st.write(f"Score: {st.session_state.correct_answers}/{st.session_state.current_question_index}")
-
-    # Display expanders for each option if the question comes from Rashi or Kitzur
-    if st.session_state.options and st.session_state.question_source in ["Rashi", "Halachot"]:
-        choice_labels = ["Option A", "Option B", "Option C", "Option D"]
-        for i, option in enumerate(st.session_state.options):
-            with st.expander(f"{choice_labels[i]}"):
-                st.write(option)

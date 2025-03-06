@@ -1,9 +1,32 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
+import os
 
 # Path to the scores file
 scores_file_path = 'scores_tab/scores.parquet'
+
+def save_score(username, category, score):
+    base_dir = os.path.dirname(__file__)
+    scores_file_path = os.path.join(base_dir, '..', 'scores_tab', 'scores.parquet')
+    today = datetime.today().strftime('%Y-%m-%d')
+    new_score = pd.DataFrame([[username, category, score, today]], columns=['username', 'category', 'score', 'date'])
+    try:
+        scores_df = pd.read_parquet(scores_file_path)
+        # Check if there is an existing entry for the same username, category, and date
+        existing_entry = scores_df[(scores_df['username'] == username) &
+                                   (scores_df['category'] == category) &
+                                   (scores_df['date'] == today)]
+        if not existing_entry.empty:
+            # Update the existing entry's score
+            scores_df.loc[existing_entry.index, 'score'] += score
+        else:
+            # Append the new score
+            scores_df = pd.concat([scores_df, new_score], ignore_index=True)
+    except FileNotFoundError:
+        scores_df = new_score
+
+    scores_df.to_parquet(scores_file_path, index=False)
 
 def scores_tab():
     st.title("Scores")
@@ -55,5 +78,3 @@ def scores_tab():
             if not personal_top_scores.empty:
                 st.write(f"{username}'s Top Scores")
                 st.dataframe(personal_top_scores)
-            else:
-                st.write(f"No scores available for {username}.")

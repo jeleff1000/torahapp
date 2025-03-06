@@ -15,9 +15,19 @@ def save_score(username, category, score):
     new_score = pd.DataFrame([[username, category, score, today]], columns=['username', 'category', 'score', 'date'])
     try:
         scores_df = pd.read_parquet(scores_file_path)
-        scores_df = pd.concat([scores_df, new_score], ignore_index=True)
+        # Check if there is an existing entry for the same username, category, and date
+        existing_entry = scores_df[(scores_df['username'] == username) &
+                                   (scores_df['category'] == category) &
+                                   (scores_df['date'] == today)]
+        if not existing_entry.empty:
+            # Update the existing entry's score
+            scores_df.loc[existing_entry.index, 'score'] += score
+        else:
+            # Append the new score
+            scores_df = pd.concat([scores_df, new_score], ignore_index=True)
     except FileNotFoundError:
         scores_df = new_score
+
     scores_df.to_parquet(scores_file_path, index=False)
 
 def haftarah_tab(st, calendar_df, date_option, haftarah_path):
@@ -160,6 +170,7 @@ def haftarah_tab(st, calendar_df, date_option, haftarah_path):
                     percentage_correct = (
                         st.session_state.correct_answers / st.session_state.total_questions) * 100 if st.session_state.total_questions > 0 else 0
                     st.write(f"Percentage Correct: {percentage_correct:.2f}%")
+                    save_score(st.session_state.username, "Haftarah", st.session_state.correct_answers)
                     return
 
                 # Display the first question from the question bank
@@ -180,10 +191,8 @@ def haftarah_tab(st, calendar_df, date_option, haftarah_path):
                         if selected_option == st.session_state.correct_answer:
                             st.session_state.correct_answers += 1
                             st.write("Correct!")
-                            save_score(st.session_state.username, "Haftarah", 1)
                         else:
                             st.write(f"Incorrect. The correct answer is: {st.session_state.correct_answer}")
-                            save_score(st.session_state.username, "Haftarah", 0)
 
                     # Display the "Next Question" button if the answer was submitted
                     if st.session_state.show_next:
@@ -318,6 +327,7 @@ def haftarah_tab(st, calendar_df, date_option, haftarah_path):
                 percentage_correct = (
                     st.session_state.correct_answers / st.session_state.total_questions) * 100 if st.session_state.total_questions > 0 else 0
                 st.write(f"Percentage Correct: {percentage_correct:.2f}%")
+                save_score(st.session_state.username, "Haftarah", st.session_state.correct_answers)
                 return
 
             # Display the first question from the question bank
@@ -338,10 +348,8 @@ def haftarah_tab(st, calendar_df, date_option, haftarah_path):
                     if selected_option == st.session_state.correct_answer:
                         st.session_state.correct_answers += 1
                         st.write("Correct!")
-                        save_score(st.session_state.username, "Haftarah", 1)
                     else:
                         st.write(f"Incorrect. The correct answer is: {st.session_state.correct_answer}")
-                        save_score(st.session_state.username, "Haftarah", 0)
 
                 # Display the "Next Question" button if the answer was submitted
                 if st.session_state.show_next:
